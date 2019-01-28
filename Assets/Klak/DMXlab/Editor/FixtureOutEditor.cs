@@ -36,7 +36,7 @@ namespace Klak.DMX
 
                 if (_selectCapability.boolValue)
                 {
-                    List<string> capabilities = fixture.GetCapabilities();
+                    List<string> capabilities = new List<string>(fixture.capabilityNames);
                     int numCapabilities = capabilities.Count;
 
                     int selectorIndex = 0;
@@ -59,7 +59,11 @@ namespace Klak.DMX
                 }
                 else
                 {
-                    JSONArray modes = fixture.fixtureDef["modes"] as JSONArray;
+                    JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(fixture.libraryPath);
+                    if (fixtureDef == null)
+                        return;
+
+                    JSONArray modes = fixtureDef["modes"] as JSONArray;
                     JSONArray modeChannels = modes[fixture.modeIndex]["channels"] as JSONArray;
 
                     List<string> channelNames = new List<string>();

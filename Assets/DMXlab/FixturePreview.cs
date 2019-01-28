@@ -7,11 +7,13 @@ namespace DMXlab
 
 #if (UNITY_EDITOR)
 
+    [ExecuteInEditMode]
     public partial class Fixture : MonoBehaviour
     {
-        public bool useLibrary;
+        public bool useLibrary = true;
         public string category;
 
+        [SerializeField]
         string _libraryPath;
         public string libraryPath {
             get { return _libraryPath; }
@@ -24,6 +26,7 @@ namespace DMXlab
             }
         }
 
+        [SerializeField]
         int _modeIndex;
         public int modeIndex {
             get { return _modeIndex; }
@@ -36,7 +39,8 @@ namespace DMXlab
             }
         }
 
-        bool _useChannelDefaults;
+        [SerializeField]
+        bool _useChannelDefaults = true;
         public bool useChannelDefaults {
             get { return _useChannelDefaults; }
             set {
@@ -48,19 +52,14 @@ namespace DMXlab
             }
         }
 
-        public JSONObject fixtureDef {
-            get { return FixtureLibrary.Instance.GetFixtureDef(libraryPath); }
-        }
+        public List<string> capabilityNames;
+        public List<int> capabilityChannels;
 
-        Dictionary<string, int> _capabilityChannels = new Dictionary<string, int>();
-        public List<string> GetCapabilities()
+        public int GetCapabilityChannelIndex(string capabilityName)
         {
-            return new List<string>(_capabilityChannels.Keys);
-        }
-        public int GetCapabilityChannelIndex(string capability)
-        {
-            if (_capabilityChannels.ContainsKey(capability))
-                return _capabilityChannels[capability];
+            int index = capabilityNames.IndexOf(capabilityName);
+            if (index != -1)
+                return capabilityChannels[index];
 
             return -1;
         }
@@ -82,21 +81,33 @@ namespace DMXlab
         float _blue;
         float _white;
         float _colorTemperature;
-        float _beamAngle;
 
-        bool _isLaser;
+        [SerializeField] float _beamAngle;
+        [SerializeField] bool _isLaser;
 
-        class Wheel
+        [System.Serializable]
+        public class Wheel
         {
             public float slot = 1;
             public float speed;
         }
 
-        Dictionary<string, Wheel> _wheels = new Dictionary<string, Wheel>();
+        public List<string> wheelNames;
+        public List<Wheel> wheelData;
+
+        public Wheel GetWheel(string wheelName)
+        {
+            int index = wheelNames.IndexOf(wheelName);
+            if (index != -1)
+                return wheelData[index];
+
+            return null;
+        }
 
         public JSONObject GetChannelDef(int channelIndex)
-        { 
-            if (!useLibrary)
+        {
+            JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(libraryPath);
+            if (fixtureDef == null)
                 return null;
 
             string channelName = fixtureDef["modes"][modeIndex]["channels"][channelIndex];
@@ -118,6 +129,12 @@ namespace DMXlab
             if (!_sceneObjectNeedsInit)
                 return;
 
+            JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(libraryPath);
+            if (fixtureDef == null)
+                return;
+
+            _sceneObjectNeedsInit = false;
+
             foreach (JSONString c in fixtureDef["categories"] as JSONArray)
                 if (c == "Laser")
                     _isLaser = true;
@@ -128,15 +145,17 @@ namespace DMXlab
             else
                 _beamAngle = 10;
 
-            _shutterEffect = FixtureLibrary.ShutterEffect.Open;
-            _intensity = 1;
-
-            _wheels = new Dictionary<string, Wheel>();
+            wheelNames = new List<string>();
+            wheelData = new List<Wheel>();
             if (fixtureDef["wheels"] != null)
                 foreach (KeyValuePair<string, JSONNode> wheel in fixtureDef["wheels"] as JSONObject)
-                    _wheels.Add(wheel.Key, new Wheel());
+                {
+                    wheelNames.Add(wheel.Key);
+                    wheelData.Add(new Wheel());
+                }
 
-            _capabilityChannels = new Dictionary<string, int>();
+            capabilityNames = new List<string>();
+            capabilityChannels = new List<int>();
             for (int i = 0; i < numChannels; i++)
             {
                 JSONObject channel = GetChannelDef(i);
@@ -146,20 +165,24 @@ namespace DMXlab
                 if (useChannelDefaults)
                 {
                     int defaultValue = FixtureLibrary.ParseChannelDefault(channel);
-
-                    SetChannelValue(i, (byte)defaultValue);
+                    if (defaultValue != -1)
+                        SetChannelValue(i, (byte)defaultValue);
                 }
 
                 JSONObject capability = channel["capability"] as JSONObject;
                 if (capability != null)
-                    _capabilityChannels[capability["type"]] = i;
+                {
+                    capabilityNames.Add(capability["type"]);
+                    capabilityChannels.Add(i);
+                }
             }
-
-            _sceneObjectNeedsInit = false;
         }
 
         void UpdateSceneObject(int channelIndex)
         {
+            if (!useLibrary)
+                return;
+
             InitSceneObjectIfNeeded();
 
             JSONObject channel = GetChannelDef(channelIndex);
@@ -248,38 +271,22 @@ namespace DMXlab
                 string wheelName = channel["name"];
                 if (capability["wheel"] != null) wheelName = capability["wheel"];
 
-                _wheels[wheelName].slot = FixtureLibrary.GetFloatProperty(capability, "slotNumber", FixtureLibrary.Entity.SlotNumber, _values[channelIndex]);
-                _wheels[wheelName].speed = 0;
+                Wheel wheel = GetWheel(wheelName);
+                if (wheel != null)
+                {
+                    wheel.slot = FixtureLibrary.GetFloatProperty(capability, "slotNumber", FixtureLibrary.Entity.SlotNumber, _values[channelIndex]);
+                    wheel.speed = 0;
+                }
             }
             else if (capabilityType == "WheelRotation")
             {
                 string wheelName = channel["name"];
                 if (capability["wheel"] != null) wheelName = capability["wheel"];
 
-                _wheels[wheelName].speed = FixtureLibrary.GetFloatProperty(capability, "speed", FixtureLibrary.Entity.Speed, _values[channelIndex]);
+                Wheel wheel = GetWheel(wheelName);
+                if (wheel != null)
+                    wheel.speed = FixtureLibrary.GetFloatProperty(capability, "speed", FixtureLibrary.Entity.Speed, _values[channelIndex]);
             }
-        }
-
-        Light GetLight()
-        {
-            Light light = gameObject.GetComponent<Light>();
-            if (!light)
-            {
-                light = gameObject.AddComponent<Light>();
-                light.type = LightType.Spot;
-                light.shadows = LightShadows.Hard;
-            }
-
-            LightShafts lightShafts = gameObject.GetComponent<LightShafts>();
-            if (!lightShafts)
-            {
-                lightShafts = gameObject.AddComponent<LightShafts>();
-                lightShafts.m_CurrentCamera = Camera.main;
-                lightShafts.m_EpipolarSamples = 1024;
-                lightShafts.m_EpipolarLines = 512;
-            }
-
-            return light;
         }
 
         int Mod(int k, int m)
@@ -289,26 +296,33 @@ namespace DMXlab
 
         #region MonoBehaviour
 
-        void Start()
-        {
-            _sceneObjectNeedsInit = true;
-        }
-
         void Update()
         {
+            // TODO: custom channel semantics
+            if (!useLibrary)
+                return;
+
             InitSceneObjectIfNeeded();
 
-            float pan = Mathf.Repeat(_pan + Mathf.Sign(_panTarget - _pan) * _panSpeed * Time.deltaTime, 360);
-            _pan = (Mathf.Abs(pan - _panTarget) > Mathf.Abs(_pan - _panTarget)) ? _panTarget : pan;
+            JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(libraryPath);
+            if (fixtureDef == null)
+                return;
 
-            float tilt = Mathf.Repeat(_tilt + Mathf.Sign(_tiltTarget - _tilt) * _tiltSpeed * Time.deltaTime, 360);
-            _tilt = (Mathf.Abs(tilt - _tiltTarget) > Mathf.Abs(_tilt - _tiltTarget)) ? _tiltTarget : tilt;
+            if (Application.isPlaying)
+            {
+                float pan = Mathf.Repeat(_pan + Mathf.Sign(_panTarget - _pan) * _panSpeed * Time.deltaTime, 360);
+                _pan = (Mathf.Abs(pan - _panTarget) > Mathf.Abs(_pan - _panTarget)) ? _panTarget : pan;
 
-            transform.localRotation = Quaternion.AngleAxis(_pan, Vector3.down) * Quaternion.AngleAxis(_tilt, Vector3.left);
+                float tilt = Mathf.Repeat(_tilt + Mathf.Sign(_tiltTarget - _tilt) * _tiltSpeed * Time.deltaTime, 360);
+                _tilt = (Mathf.Abs(tilt - _tiltTarget) > Mathf.Abs(_tilt - _tiltTarget)) ? _tiltTarget : tilt;
+            }
+            else
+            {
+                _pan = _panTarget;
+                _tilt = _tiltTarget;
+            }
 
-            Light light = GetLight();
-
-            if (_shutterEffect > FixtureLibrary.ShutterEffect.Closed)
+            if (Application.isPlaying && _shutterEffect > FixtureLibrary.ShutterEffect.Closed)
             {
                 // TODO: animation curves
 
@@ -319,17 +333,26 @@ namespace DMXlab
             else
                 _shutter = (_shutterEffect == FixtureLibrary.ShutterEffect.Closed);
 
-            light.intensity = _shutter ? 0 : _intensity;
-            light.spotAngle = _isLaser ? 0 : _beamAngle;
+            transform.localRotation = Quaternion.AngleAxis(_pan, Vector3.down) * Quaternion.AngleAxis(_tilt, Vector3.left);
+
+            Light fixtureLight = GetComponent<Light>();
+            if (fixtureLight == null)
+                return;
+
+            fixtureLight.intensity = _shutter ? 0 : _intensity;
+            fixtureLight.spotAngle = _isLaser ? 0 : _beamAngle;
 
             // wheels
 
-            foreach (KeyValuePair<string, Wheel> wheel in _wheels)
+            for (int i = 0; i < wheelNames.Count; i++)
             {
-                JSONArray slots = fixtureDef["wheels"][wheel.Key]["slots"] as JSONArray;
+                string wheelName = wheelNames[i];
+                Wheel wheel = wheelData[i];
+
+                JSONArray slots = fixtureDef["wheels"][wheelName]["slots"] as JSONArray;
                 int numSlots = slots.Count;
-                int slotIndex = (int)wheel.Value.slot;
-                float t = wheel.Value.slot - slotIndex;
+                int slotIndex = (int)wheel.slot;
+                float t = wheel.slot - slotIndex;
                 JSONObject slotA = slots[Mod(slotIndex - 1, numSlots)] as JSONObject;
                 JSONObject slotB = slots[Mod(slotIndex, numSlots)] as JSONObject;
 
@@ -347,21 +370,24 @@ namespace DMXlab
                 }
 
                 // wheel rotation
-                wheel.Value.slot += wheel.Value.speed * Time.deltaTime;
-                if (wheel.Value.slot >= numSlots + 1) wheel.Value.slot -= numSlots;
-                if (wheel.Value.slot < 1) wheel.Value.slot += numSlots;
+                if (Application.isPlaying)
+                {
+                    wheel.slot += wheel.speed * Time.deltaTime;
+                    if (wheel.slot >= numSlots + 1) wheel.slot -= numSlots;
+                    if (wheel.slot < 1) wheel.slot += numSlots;
+                }
             }
 
             // color temperature mode
             if (_colorTemperature > 0)
             {
-                light.color = Color.white;
-                light.colorTemperature = _colorTemperature;
+                fixtureLight.color = Color.white;
+                fixtureLight.colorTemperature = _colorTemperature;
             }
             else
             {
-                light.color = new Color(_red + _white, _green + _white, _blue + _white);
-                light.colorTemperature = 6500;
+                fixtureLight.color = new Color(_red + _white, _green + _white, _blue + _white);
+                fixtureLight.colorTemperature = 6500;
             }
         }
 

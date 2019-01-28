@@ -29,6 +29,9 @@ namespace DMXlab
 
         public JSONObject GetFixtureDef(string path)
         {
+            if (path == null)
+                return null;
+
             if (!_fixtureDefs.ContainsKey(path))
             {
                 string resourcePath = kLibraryPath + path;

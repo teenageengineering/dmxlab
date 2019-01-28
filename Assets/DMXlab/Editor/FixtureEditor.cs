@@ -8,6 +8,30 @@ namespace DMXlab
     [CustomEditor(typeof(Fixture))]
     public class FixtureEditor : Editor
     {
+        #region Menu
+
+        [MenuItem("GameObject/DMXlab/Fixture", false, 10)]
+        static void CreateFixture()
+        {
+            GameObject go = new GameObject("Fixture");
+            go.AddComponent<Fixture>();
+
+            Light light = go.GetComponent<Light>();
+            if (!light) light = go.AddComponent<Light>();
+            light.type = LightType.Spot;
+            light.shadows = LightShadows.Hard;
+
+            LightShafts lightShafts = go.GetComponent<LightShafts>();
+            if (!lightShafts) lightShafts = go.AddComponent<LightShafts>();
+            lightShafts.m_CurrentCamera = Camera.main;
+            lightShafts.m_EpipolarSamples = 1024;
+            lightShafts.m_EpipolarLines = 512;
+
+            Selection.activeGameObject = go;
+        }
+
+        #endregion
+
         public override bool RequiresConstantRepaint()
         {
             return true;
@@ -37,7 +61,11 @@ namespace DMXlab
                 fixtureIndex = EditorGUILayout.Popup("Fixture", fixtureIndex, fixtures);
                 fixture.libraryPath = fixtures[fixtureIndex];
 
-                JSONArray modes = fixture.fixtureDef["modes"] as JSONArray;
+                JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(fixture.libraryPath);
+                if (fixtureDef == null)
+                    return;
+
+                JSONArray modes = fixtureDef["modes"] as JSONArray;
                 string[] modeNames = new string[modes.Count];
                 for (int i = 0; i < modes.Count; i++) modeNames[i] = modes[i]["name"];
                 fixture.modeIndex = Mathf.Min(EditorGUILayout.Popup("Mode", fixture.modeIndex, modeNames), modes.Count - 1);
