@@ -61,7 +61,6 @@ namespace Klak.DMX
                 {
                     JSONArray modes = fixture.fixtureDef["modes"] as JSONArray;
                     JSONArray modeChannels = modes[fixture.modeIndex]["channels"] as JSONArray;
-                    JSONObject availableChannels = fixture.fixtureDef["availableChannels"] as JSONObject;
 
                     List<string> channelNames = new List<string>();
                     List<int> channelIndexes = new List<int>();
