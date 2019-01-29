@@ -310,10 +310,10 @@ namespace DMXlab
 
             if (Application.isPlaying)
             {
-                float pan = Mathf.Repeat(_pan + Mathf.Sign(_panTarget - _pan) * _panSpeed * Time.deltaTime, 360);
+                float pan = _pan + Mathf.Sign(_panTarget - _pan) * _panSpeed * Time.deltaTime;
                 _pan = (Mathf.Abs(pan - _panTarget) > Mathf.Abs(_pan - _panTarget)) ? _panTarget : pan;
 
-                float tilt = Mathf.Repeat(_tilt + Mathf.Sign(_tiltTarget - _tilt) * _tiltSpeed * Time.deltaTime, 360);
+                float tilt = _tilt + Mathf.Sign(_tiltTarget - _tilt) * _tiltSpeed * Time.deltaTime;
                 _tilt = (Mathf.Abs(tilt - _tiltTarget) > Mathf.Abs(_tilt - _tiltTarget)) ? _tiltTarget : tilt;
             }
             else
