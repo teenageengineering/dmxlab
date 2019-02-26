@@ -9,7 +9,7 @@ namespace DMXlab
         public int startAdress;
         public int numChannels;
 
-        public DP.DMX dmxSender;
+        public DMXDriver dmxDriver;
 
         [SerializeField]
         byte[] _values = new byte[kMaxNumChannels];
@@ -26,8 +26,8 @@ namespace DMXlab
             int adress = startAdress + channelIndex;
             if (adress > 512) return;
 
-            if (dmxSender != null)
-                dmxSender[adress] = value;
+            if (dmxDriver != null)
+                dmxDriver[adress] = value;
         }
 
         public byte GetChannelValue(int channelIndex)
