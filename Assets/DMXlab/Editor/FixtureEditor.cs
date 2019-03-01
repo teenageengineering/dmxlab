@@ -43,7 +43,7 @@ namespace DMXlab
 
             EditorStyles.label.wordWrap = true;
 
-            fixture.dmxDriver = (DMXDriver)EditorGUILayout.ObjectField("DMX Driver", fixture.dmxDriver, typeof(DMXDriver), true);
+            fixture.dmxDriver = (Driver)EditorGUILayout.ObjectField("Driver", fixture.dmxDriver, typeof(Driver), true);
 
             fixture.startAdress = Mathf.Clamp(EditorGUILayout.IntField("Start Adress", fixture.startAdress), 1, 512);
 

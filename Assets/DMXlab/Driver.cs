@@ -7,7 +7,7 @@ using UnityEngine;
 namespace DMXlab
 {
     [ExecuteInEditMode]
-    public class DMXDriver : MonoBehaviour
+    public class Driver : MonoBehaviour
     {
         const int N_DMX_CHANNELS = 512;
 
@@ -112,8 +112,6 @@ namespace DMXlab
             TxBuffer[003] = (byte)((N_DMX_CHANNELS + 1 >> 8) & 255);
             TxBuffer[004] = DMX_PRO_START_CODE;
             TxBuffer[517] = DMX_PRO_END_MSG;
-
-            _needsRefresh = true;
         }
 
         void Update()

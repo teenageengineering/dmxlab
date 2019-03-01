@@ -9,7 +9,7 @@ namespace DMXlab
         public int startAdress;
         public int numChannels;
 
-        public DMXDriver dmxDriver;
+        public Driver dmxDriver;
 
         [SerializeField]
         byte[] _values = new byte[kMaxNumChannels];

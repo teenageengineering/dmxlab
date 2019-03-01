@@ -4,16 +4,16 @@ using System.IO.Ports;
 
 namespace DMXlab
 {
-    [CustomEditor(typeof(DMXDriver))]
-    public class DMXDriverEditor : Editor
+    [CustomEditor(typeof(Driver))]
+    public class DriverEditor : Editor
     {
         #region Menu
 
-        [MenuItem("GameObject/DMXlab/DMX Driver", false, 10)]
-        static void CreateDMXDriver()
+        [MenuItem("GameObject/DMXlab/Driver", false, 10)]
+        static void CreateDriver()
         {
-            GameObject go = new GameObject("DMX Driver");
-            go.AddComponent<DMXDriver>();
+            GameObject go = new GameObject("Driver");
+            go.AddComponent<Driver>();
             Selection.activeGameObject = go;
         }
 
@@ -21,9 +21,9 @@ namespace DMXlab
 
         public override void OnInspectorGUI()
         {
-            var dmxDriver = (DMXDriver)target;
+            var dmxDriver = (Driver)target;
 
-            string[] serialPorts = DMXDriver.GetPortNames();
+            string[] serialPorts = Driver.GetPortNames();
             int serialPortIndex = Mathf.Max(System.Array.IndexOf(serialPorts, dmxDriver.serialPortName), 0);
             serialPortIndex = EditorGUILayout.Popup("Serial ports", serialPortIndex, serialPorts);
             dmxDriver.serialPortName = serialPorts[serialPortIndex];
