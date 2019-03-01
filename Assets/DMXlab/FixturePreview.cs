@@ -287,6 +287,12 @@ namespace DMXlab
                 if (wheel != null)
                     wheel.speed = FixtureLibrary.GetFloatProperty(capability, "speed", FixtureLibrary.Entity.Speed, _values[channelIndex]);
             }
+            else if (capabilityType == "NoFunction")
+            {
+                // fix for some bad ficture defs
+                if (channel["name"] == "Strobe")
+                    _shutterEffect = FixtureLibrary.ShutterEffect.Open;
+            }
         }
 
         int Mod(int k, int m)
