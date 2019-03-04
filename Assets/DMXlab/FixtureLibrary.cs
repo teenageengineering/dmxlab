@@ -370,7 +370,7 @@ namespace DMXlab
         {
             string stringValue = channel["defaultValue"];
             if (stringValue == null)
-                return -1;
+                return 0;
 
             // TODO: proper fine channel handling
 

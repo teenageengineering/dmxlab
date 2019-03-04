@@ -34,7 +34,7 @@ namespace DMXlab
 
         public override bool RequiresConstantRepaint()
         {
-            return true;
+            return Application.isPlaying;
         }
 
         public override void OnInspectorGUI()
@@ -116,8 +116,6 @@ namespace DMXlab
                     EditorGUILayout.EndVertical();
                 }
             }
-
-            fixture.OnValidate();
         }
     }
 }

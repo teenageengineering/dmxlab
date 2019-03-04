@@ -7,7 +7,6 @@ namespace DMXlab
 
 #if (UNITY_EDITOR)
 
-    [ExecuteInEditMode]
     public partial class Fixture : MonoBehaviour
     {
         public bool useLibrary = true;
@@ -21,7 +20,7 @@ namespace DMXlab
                 if (value != _libraryPath)
                 {
                     _libraryPath = value;
-                    _sceneObjectNeedsInit = true;
+                    InitFixturePreview();
                 }
             }
         }
@@ -34,7 +33,7 @@ namespace DMXlab
                 if (value != _modeIndex)
                 {
                     _modeIndex = value;
-                    _sceneObjectNeedsInit = true;
+                    InitFixturePreview();
                 }
             }
         }
@@ -47,7 +46,9 @@ namespace DMXlab
                 if (value != _useChannelDefaults)
                 {
                     _useChannelDefaults = value;
-                    _sceneObjectNeedsInit = true;
+
+                    if (_useChannelDefaults)
+                        SetChannelDefaults();
                 }
             }
         }
@@ -63,27 +64,6 @@ namespace DMXlab
 
             return -1;
         }
-
-        float _pan;
-        float _panTarget;
-        float _panSpeed;
-        float _tilt;
-        float _tiltTarget;
-        float _tiltSpeed;
-
-        bool _shutter;
-        FixtureLibrary.ShutterEffect _shutterEffect;
-        float _shutterSpeed;
-
-        float _intensity;
-        float _red;
-        float _green;
-        float _blue;
-        float _white;
-        float _colorTemperature;
-
-        [SerializeField] float _beamAngle;
-        [SerializeField] bool _isLaser;
 
         [System.Serializable]
         public class Wheel
@@ -116,24 +96,41 @@ namespace DMXlab
                 JSONObject channel = fixtureDef["availableChannels"][channelName] as JSONObject;
                 if (channel != null)
                     channel["name"] = channelName;
-                    
+
                 return channel;
             }
 
             return null;
         }
 
-        bool _sceneObjectNeedsInit;
-        void InitSceneObjectIfNeeded()
-        {
-            if (!_sceneObjectNeedsInit)
-                return;
+        #region Internal
 
+        float _pan;
+        float _panTarget;
+        float _panSpeed;
+        float _tilt;
+        float _tiltTarget;
+        float _tiltSpeed;
+
+        bool _shutter;
+        FixtureLibrary.ShutterEffect _shutterEffect;
+        float _shutterSpeed;
+
+        float _intensity;
+        float _red;
+        float _green;
+        float _blue;
+        float _white;
+        float _colorTemperature;
+
+        [SerializeField] float _beamAngle;
+        [SerializeField] bool _isLaser;
+
+        void InitFixturePreview()
+        {
             JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(libraryPath);
             if (fixtureDef == null)
                 return;
-
-            _sceneObjectNeedsInit = false;
 
             foreach (JSONString c in fixtureDef["categories"] as JSONArray)
                 if (c == "Laser")
@@ -162,13 +159,6 @@ namespace DMXlab
                 if (channel == null)
                     continue;
 
-                if (useChannelDefaults)
-                {
-                    int defaultValue = FixtureLibrary.ParseChannelDefault(channel);
-                    if (defaultValue != -1)
-                        SetChannelValue(i, (byte)defaultValue);
-                }
-
                 JSONObject capability = channel["capability"] as JSONObject;
                 if (capability != null)
                 {
@@ -176,14 +166,30 @@ namespace DMXlab
                     capabilityChannels.Add(i);
                 }
             }
+
+            if (useChannelDefaults)
+                SetChannelDefaults();
+
+            // TODO: init channels
         }
 
-        void UpdateSceneObject(int channelIndex)
+        void SetChannelDefaults()
+        {
+            for (int i = 0; i < numChannels; i++)
+            {
+                JSONObject channel = GetChannelDef(i);
+                if (channel == null)
+                    continue;
+
+                int defaultValue = FixtureLibrary.ParseChannelDefault(channel);
+                SetChannelValue(i, (byte)defaultValue);
+            }
+        }
+
+        void UpdateChannel(int channelIndex)
         {
             if (!useLibrary)
                 return;
-
-            InitSceneObjectIfNeeded();
 
             JSONObject channel = GetChannelDef(channelIndex);
             if (channel == null)
@@ -209,10 +215,14 @@ namespace DMXlab
             if (capabilityType == "Pan")
             {
                 _panTarget = FixtureLibrary.GetFloatProperty(capability, "angle", FixtureLibrary.Entity.RotationAngle, _values[channelIndex]);
+
+                UpdateTransform();
             }
             else if (capabilityType == "Tilt")
             {
                 _tiltTarget = FixtureLibrary.GetFloatProperty(capability, "angle", FixtureLibrary.Entity.RotationAngle, _values[channelIndex]);
+
+                UpdateTransform();
             }
             else if (capabilityType == "PanTiltSpeed")
             {
@@ -221,6 +231,8 @@ namespace DMXlab
             else if (capabilityType == "Intensity")
             {
                 _intensity = FixtureLibrary.GetFloatProperty(capability, "brightness", FixtureLibrary.Entity.Brightness, _values[channelIndex]);
+
+                UpdateIntensity();
             }
             else if (capabilityType == "ColorIntensity")
             {
@@ -238,19 +250,27 @@ namespace DMXlab
                     _white = intensity;
 
                 // TODO: more colors
+
+                UpdateColor();
             }
             else if (capabilityType == "Zoom")
             {
                 _beamAngle = FixtureLibrary.GetFloatProperty(capability, "angle", FixtureLibrary.Entity.BeamAngle, _values[channelIndex]);
+
+                UpdateSpotAngle();
             }
             else if (capabilityType == "ShutterStrobe")
             {
                 _shutterEffect = FixtureLibrary.ParseEffect(capability["shutterEffect"]);
                 _shutterSpeed = FixtureLibrary.GetFloatProperty(capability, "speed", FixtureLibrary.Entity.Speed, _values[channelIndex]);
+
+                UpdateShutter();
             }
             else if (capabilityType == "ColorTemperature")
             {
                 _colorTemperature = FixtureLibrary.GetFloatProperty(capability, "colorTemperature", FixtureLibrary.Entity.ColorTemperature, _values[channelIndex]);
+
+                UpdateColor();
             }
             else if (capabilityType == "ColorPreset")
             {
@@ -265,6 +285,8 @@ namespace DMXlab
 
                 if (capability["colorsTemperature"] != null)
                     _colorTemperature = FixtureLibrary.GetFloatProperty(capability, "colorTemperature", FixtureLibrary.Entity.ColorTemperature, _values[channelIndex]);
+
+                UpdateColor();
             }
             else if (capabilityType == "WheelSlot")
             {
@@ -277,6 +299,8 @@ namespace DMXlab
                     wheel.slot = FixtureLibrary.GetFloatProperty(capability, "slotNumber", FixtureLibrary.Entity.SlotNumber, _values[channelIndex]);
                     wheel.speed = 0;
                 }
+
+                UpdateColor();
             }
             else if (capabilityType == "WheelRotation")
             {
@@ -292,6 +316,8 @@ namespace DMXlab
                 // fix for some bad ficture defs
                 if (channel["name"] == "Strobe")
                     _shutterEffect = FixtureLibrary.ShutterEffect.Open;
+
+                UpdateShutter();
             }
         }
 
@@ -300,20 +326,8 @@ namespace DMXlab
             return ((k % m) + m) % m;
         }
 
-        #region MonoBehaviour
-
-        void Update()
+        void UpdateTransform()
         {
-            // TODO: custom channel semantics
-            if (!useLibrary)
-                return;
-
-            InitSceneObjectIfNeeded();
-
-            JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(libraryPath);
-            if (fixtureDef == null)
-                return;
-
             if (Application.isPlaying)
             {
                 float pan = _pan + Mathf.Sign(_panTarget - _pan) * _panSpeed * Time.deltaTime;
@@ -328,6 +342,11 @@ namespace DMXlab
                 _tilt = _tiltTarget;
             }
 
+            transform.localRotation = Quaternion.AngleAxis(_pan, Vector3.down) * Quaternion.AngleAxis(_tilt, Vector3.left);
+        }
+
+        void UpdateShutter()
+        {
             if (Application.isPlaying && _shutterEffect > FixtureLibrary.ShutterEffect.Closed)
             {
                 // TODO: animation curves
@@ -339,16 +358,28 @@ namespace DMXlab
             else
                 _shutter = (_shutterEffect == FixtureLibrary.ShutterEffect.Closed);
 
-            transform.localRotation = Quaternion.AngleAxis(_pan, Vector3.down) * Quaternion.AngleAxis(_tilt, Vector3.left);
+            UpdateIntensity();
+        }
 
+        void UpdateIntensity()
+        {
             Light fixtureLight = GetComponent<Light>();
-            if (fixtureLight == null)
+            fixtureLight.intensity = _shutter ? 0 : _intensity;
+        }
+
+        void UpdateSpotAngle()
+        {
+            Light fixtureLight = GetComponent<Light>();
+            fixtureLight.spotAngle = _isLaser ? 0 : _beamAngle;
+        }
+
+        void UpdateColor()
+        {
+            JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(libraryPath);
+            if (fixtureDef == null)
                 return;
 
-            fixtureLight.intensity = _shutter ? 0 : _intensity;
-            fixtureLight.spotAngle = _isLaser ? 0 : _beamAngle;
-
-            // wheels
+            Light fixtureLight = GetComponent<Light>();
 
             for (int i = 0; i < wheelNames.Count; i++)
             {
@@ -397,20 +428,36 @@ namespace DMXlab
             }
         }
 
-        public void OnValidate()
+        void UpdatePreview()
         {
-            if (!Application.isPlaying)
-                Update();
+            // TODO: user-defined channel semantics
+            if (!useLibrary)
+                return;
+
+            UpdateTransform();
+            UpdateShutter();
+            UpdateSpotAngle();
+            UpdateColor();
         }
 
         #endregion
+
+        void Start()
+        {
+            for (int i = 0; i < numChannels; i++)
+                UpdateChannel(i);
+
+            UpdatePreview();
+        }
     }
 
 #else
         
     public partial class Fixture : MonoBehaviour
     {
-        void UpdateSceneObject(int channelIndex) {}
+        void UpdateChannel(int channelIndex) {}
+
+        void UpdatePreview() {}
 
         void Start()
         {

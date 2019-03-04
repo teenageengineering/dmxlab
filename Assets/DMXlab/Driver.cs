@@ -6,7 +6,6 @@ using UnityEngine;
 
 namespace DMXlab
 {
-    [ExecuteInEditMode]
     public class Driver : MonoBehaviour
     {
         const int N_DMX_CHANNELS = 512;
@@ -32,24 +31,23 @@ namespace DMXlab
 
         #endregion
 
-        bool _needsRefresh;
         static SerialPort serialPort;
         byte[] TxBuffer = new byte[DMX_PRO_MESSAGE_OVERHEAD + N_DMX_CHANNELS];
 
-        public byte this[int index] {
-            get {
-                if (index < 1 || index > N_DMX_CHANNELS)
-                    return 0;
+        public byte GetValue(int adress) 
+        {
+            if (adress < 1 || adress > N_DMX_CHANNELS)
+                return 0;
 
-                return TxBuffer[DMX_PRO_DATA_INDEX_OFFSET + index - 1];
-            }
-            set {
-                if (index < 1 || index > N_DMX_CHANNELS)
-                    return;
+            return TxBuffer[DMX_PRO_DATA_INDEX_OFFSET + adress - 1];
+        }
 
-                TxBuffer[DMX_PRO_DATA_INDEX_OFFSET + index - 1] = value;
-                _needsRefresh = true;
-            }
+        public void SetValue(int adress, byte value) 
+        {
+            if (adress < 1 || adress > N_DMX_CHANNELS)
+                return;
+
+            TxBuffer[DMX_PRO_DATA_INDEX_OFFSET + adress - 1] = value;
         }
 
         public static string[] GetPortNames()
@@ -78,7 +76,16 @@ namespace DMXlab
             {
                 string path = "/dev/" + serialPortName;
                 serialPort = new SerialPort(path, 57600, Parity.None, 8, StopBits.One);
-                serialPort.Open();
+
+                try 
+                {
+                    serialPort.Open();
+                }
+                catch (System.Exception e) 
+                {
+                    Debug.LogException(e);
+                    serialPortName = "";
+                }
             }
 
             _prevSerialPortName = serialPortName;
@@ -93,18 +100,14 @@ namespace DMXlab
         void Send()
         {
             if (serialPort != null && serialPort.IsOpen)
-            {
                 serialPort.Write(TxBuffer, 0, TX_BUFFER_LENGTH);
-                _needsRefresh = false;
-            }
         }
 
         #region MonoBehaviour
 
         void Start()
         {
-            if (Application.isEditor)
-                Application.runInBackground = true;
+            Application.runInBackground = true;
 
             TxBuffer[000] = DMX_PRO_START_MSG;
             TxBuffer[001] = DMX_PRO_LABEL_DMX;
@@ -119,13 +122,14 @@ namespace DMXlab
             if (serialPortName != _prevSerialPortName)
                 OpenSerialPort();
 
-            if (_needsRefresh)
-                Send();
+            Send();
         }
 
         void OnApplicationQuit()
         {
-            for (int i = 0; i < N_DMX_CHANNELS; i++) TxBuffer[DMX_PRO_DATA_INDEX_OFFSET + i] = (byte)0x00;
+            for (int i = 0; i < N_DMX_CHANNELS; i++) 
+                TxBuffer[DMX_PRO_DATA_INDEX_OFFSET + i] = 0;
+
             Send();
 
             if (serialPort != null)
