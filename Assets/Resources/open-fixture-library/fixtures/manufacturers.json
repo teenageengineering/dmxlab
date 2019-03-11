@@ -29,6 +29,10 @@
     "name": "Ayrton",
     "website": "https://www.ayrton.eu/"
   },
+  "beamz": {
+    "name": "BeamZ",
+    "website": "http://www.tronios.com/en/"
+  },
   "big-dipper": {
     "name": "Big Dipper",
     "website": "http://www.bigdipper-laser.com/"
@@ -43,7 +47,8 @@
   },
   "briteq": {
     "name": "Briteq",
-    "website": "https://briteq-lighting.com/"
+    "website": "https://briteq-lighting.com/",
+    "rdmId": 8482
   },
   "cameo": {
     "name": "cameo",
@@ -62,6 +67,10 @@
     "name": "Chroma-Q",
     "website": "https://www.chroma-q.com",
     "rdmId": 21360
+  },
+  "cinetec": {
+    "name": "Cinetec",
+    "website": "http://www.dimatec.net/tarif_cinetec.html"
   },
   "clay-paky": {
     "name": "Clay Paky",
@@ -177,6 +186,11 @@
     "website": "https://www.magicfx.eu/",
     "rdmId": 18008
   },
+  "mark": {
+    "name": "Mark",
+    "comment": "No manufacturer website available, linking to distributor Equipson instead.",
+    "website": "https://www.equipson.es/products/mark"
+  },
   "martin": {
     "name": "Martin",
     "website": "https://www.martin.com/",
@@ -186,6 +200,10 @@
     "name": "MDG",
     "website": "http://www.mdgfog.com/en",
     "rdmId": 19780
+  },
+  "mega-led-lighting": {
+    "name": "Mega LED Lighting",
+    "website": "http://mjledlighting.com"
   },
   "minuit-une": {
     "name": "Minuit Une",
@@ -254,6 +272,11 @@
   "stairville": {
     "name": "Stairville",
     "website": "https://www.thomann.de"
+  },
+  "starway": {
+    "name": "Starway",
+    "website": "https://en.star-way.com/",
+    "rdmId": 2537
   },
   "sun-star": {
     "name": "Sun Star",
