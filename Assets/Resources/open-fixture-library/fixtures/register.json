@@ -1165,6 +1165,11 @@
       "lastActionDate": "2018-08-09",
       "lastAction": "modified"
     },
+    "tmb/solaris-flare-q+": {
+      "name": "Solaris Flare Q+",
+      "lastActionDate": "2018-08-09",
+      "lastAction": "modified"
+    },
     "venue/thintri64": {
       "name": "ThinTri64",
       "lastActionDate": "2018-07-21",
@@ -1567,7 +1572,8 @@
       "showtec/horizon-8",
       "showtec/sunstrip-active-mkii",
       "stairville/led-flood-panel-150",
-      "tmb/solaris-flare"
+      "tmb/solaris-flare",
+      "tmb/solaris-flare-q+"
     ],
     "Color Changer": [
       "5star-systems/spica-250m",
@@ -1769,6 +1775,7 @@
       "starway/stickolor-1210uhd",
       "tiptop-stage-light/3-10w-battery-led-wedge-par",
       "tmb/solaris-flare",
+      "tmb/solaris-flare-q+",
       "venue/thintri64",
       "venue/tristrip3z"
     ],
@@ -1848,7 +1855,9 @@
       "eurolite/led-tmh-18",
       "eurolite/led-tmh-x25",
       "glp/jdc1",
-      "prolights/pixpan16"
+      "prolights/pixpan16",
+      "tmb/solaris-flare",
+      "tmb/solaris-flare-q+"
     ],
     "Moving Head": [
       "5star-systems/spica-250m",
@@ -2000,7 +2009,8 @@
       "glp/jdc1",
       "martin/atomic-3000",
       "prolights/polar3000",
-      "tmb/solaris-flare"
+      "tmb/solaris-flare",
+      "tmb/solaris-flare-q+"
     ]
   },
   "contributors": {
