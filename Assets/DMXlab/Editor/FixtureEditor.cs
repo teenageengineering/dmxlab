@@ -24,8 +24,7 @@ namespace DMXlab
             LightShafts lightShafts = go.GetComponent<LightShafts>();
             if (!lightShafts) lightShafts = go.AddComponent<LightShafts>();
             lightShafts.m_CurrentCamera = Camera.main;
-            lightShafts.m_EpipolarSamples = 1024;
-            lightShafts.m_EpipolarLines = 512;
+            lightShafts.m_DepthThreshold = 4;
 
             Selection.activeGameObject = go;
         }

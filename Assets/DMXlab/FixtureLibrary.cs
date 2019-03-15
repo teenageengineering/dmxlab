@@ -384,6 +384,11 @@ namespace DMXlab
             return value;
         }
 
+        public static string ParseTemplatePixelKey(string channelName)
+        {
+            return Regex.Match(channelName, @"\d+").Value;
+        }
+
         #endregion
     }
 }

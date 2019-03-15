@@ -125,6 +125,29 @@ namespace DMXlab
 
         [SerializeField] float _beamAngle;
         [SerializeField] bool _isLaser;
+        [SerializeField] bool _isMatrix;
+
+        GameObject CreatePixel(string name, Vector3 size)
+        {
+            GameObject go = new GameObject(name);
+
+            MeshFilter filter = go.AddComponent<MeshFilter>();
+            Mesh mesh = new Mesh();
+            Vector3[] verts = new Vector3[4];
+            Vector3 halfSize = size / 2;
+            verts[0] = new Vector3(-halfSize.x, -halfSize.y);
+            verts[1] = new Vector3(halfSize.x, -halfSize.y);
+            verts[2] = new Vector3(-halfSize.x, halfSize.y);
+            verts[3] = new Vector3(halfSize.x, halfSize.y);
+            mesh.vertices = verts;
+            mesh.triangles = new int[] { 0, 1, 2, 2, 1, 3 };
+            filter.mesh = mesh;
+
+            MeshRenderer renderer = go.AddComponent<MeshRenderer>();
+            renderer.material = new Material(Shader.Find("Unlit/Color"));
+
+            return go;
+        }
 
         void InitFixturePreview()
         {
@@ -132,9 +155,12 @@ namespace DMXlab
             if (fixtureDef == null)
                 return;
 
+            _isLaser = false;
             foreach (JSONString c in fixtureDef["categories"] as JSONArray)
                 if (c == "Laser")
                     _isLaser = true;
+
+            // physical
 
             JSONArray lens = fixtureDef["physical"]["lens"]["degreesMinMax"] as JSONArray;
             if (lens != null && lens[0] == lens[1])
@@ -142,14 +168,70 @@ namespace DMXlab
             else
                 _beamAngle = 10;
 
+            Vector3 pixelSize = new Vector3(0.05f, 0.05f, 0);
+            JSONArray dimensions = fixtureDef["physical"]["matrixPixels"]["dimensions"] as JSONArray;
+            if (dimensions != null)
+                pixelSize = new Vector3(dimensions[0], dimensions[1], dimensions[2]) / 1000;
+
+            Vector3 pixelSpacing = Vector3.zero;
+            JSONArray spacing = fixtureDef["physical"]["matrixPixels"]["spacing"] as JSONArray;
+            if (spacing != null)
+                pixelSpacing = new Vector3(spacing[0], spacing[1], spacing[2]) / 1000;
+
+            // wheels
+
             wheelNames = new List<string>();
             wheelData = new List<Wheel>();
             if (fixtureDef["wheels"] != null)
+            {
                 foreach (KeyValuePair<string, JSONNode> wheel in fixtureDef["wheels"] as JSONObject)
                 {
                     wheelNames.Add(wheel.Key);
                     wheelData.Add(new Wheel());
                 }
+            }
+
+            // pixels
+
+            _isMatrix = false;
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = transform.GetChild(i);
+                if (Application.isPlaying)
+                    Destroy(child.gameObject);
+                else
+                    DestroyImmediate(child.gameObject);
+            }
+
+            if (fixtureDef["matrix"] != null)
+            {
+                _isMatrix = true;
+
+                JSONArray pixelCount = fixtureDef["matrix"]["pixelCount"] as JSONArray;
+
+                LightShafts lightShafts = GetComponent<LightShafts>();
+                lightShafts.m_Size = new Vector3(pixelCount[0] * pixelSize.x, pixelCount[1] * pixelSize.y, pixelCount[2] * pixelSize.z);
+
+                if (pixelCount != null)
+                {
+                    Vector3 offset = new Vector3((pixelCount[0] - 1f) / 2 * pixelSize.x, (pixelCount[1] - 1f) / 2 * pixelSize.y, (pixelCount[2] - 1f) / 2 * pixelSize.z);
+                    int i = 1;
+                    for (int z = 0; z < pixelCount[2]; z++)
+                    {
+                        for (int y = 0; y < pixelCount[1]; y++)
+                        {
+                            for (int x = 0; x < pixelCount[0]; x++)
+                            {
+                                GameObject pixel = CreatePixel("Pixel " + i++, pixelSize);
+
+                                // TODO: pixel spacing
+                                pixel.transform.localPosition = new Vector3(x * pixelSize.x, y * pixelSize.y, z * pixelSize.z) - offset;
+                                pixel.transform.SetParent(transform, false);
+                            }
+                        }
+                    }
+                }
+            }
 
             capabilityNames = new List<string>();
             capabilityChannels = new List<int>();
@@ -169,8 +251,6 @@ namespace DMXlab
 
             if (useChannelDefaults)
                 SetChannelDefaults();
-
-            // TODO: init channels
         }
 
         void SetChannelDefaults()
@@ -240,14 +320,39 @@ namespace DMXlab
 
                 string color = capability["color"];
 
-                if (color == "Red")
-                    _red = intensity;
-                else if (color == "Green")
-                    _green = intensity;
-                else if (color == "Blue")
-                    _blue = intensity;
-                else if (color == "White")
-                    _white = intensity;
+                string pixelKey = FixtureLibrary.ParseTemplatePixelKey(channel["name"]);
+
+                if (!string.IsNullOrEmpty(pixelKey))
+                {
+                    Transform pixel = transform.Find("Pixel " + pixelKey);
+                    if (pixel == null)
+                        return;
+
+                    MeshRenderer pixelRenderer = pixel.GetComponent<MeshRenderer>();
+                    Color pixelColor = pixelRenderer.sharedMaterial.color;
+
+                    if (color == "Red")
+                        pixelColor.r = intensity;
+                    else if (color == "Green")
+                        pixelColor.g = intensity;
+                    else if (color == "Blue")
+                        pixelColor.b = intensity;
+                    else if (color == "White")
+                        pixelColor.a = intensity;
+
+                    pixelRenderer.sharedMaterial.color = pixelColor;
+                }
+                else 
+                {
+                    if (color == "Red")
+                        _red = intensity;
+                    else if (color == "Green")
+                        _green = intensity;
+                    else if (color == "Blue")
+                        _blue = intensity;
+                    else if (color == "White")
+                        _white = intensity;
+                }
 
                 // TODO: more colors
 
@@ -423,7 +528,19 @@ namespace DMXlab
             }
             else
             {
-                fixtureLight.color = new Color(_red + _white, _green + _white, _blue + _white);
+                if (_isMatrix)
+                {
+                    Color color = Color.black;
+                    MeshRenderer[] pixels = GetComponentsInChildren<MeshRenderer>();
+                    foreach (MeshRenderer pixel in pixels)
+                    {
+                        color += pixel.material.color;
+                    }
+                    fixtureLight.color = color / pixels.Length;
+                }
+                else
+                    fixtureLight.color = new Color(_red + _white, _green + _white, _blue + _white);
+
                 fixtureLight.colorTemperature = 6500;
             }
         }
@@ -442,12 +559,10 @@ namespace DMXlab
 
         #endregion
 
-        void Start()
+        void Awake()
         {
             for (int i = 0; i < numChannels; i++)
                 UpdateChannel(i);
-
-            UpdatePreview();
         }
     }
 
@@ -466,6 +581,8 @@ namespace DMXlab
 
             LightShafts lightShafts = gameObject.GetComponent<LightShafts>();
             if (lightShafts) lightShafts.enabled = false;
+
+            // FIXME: disable pixels
         }
     }
 
