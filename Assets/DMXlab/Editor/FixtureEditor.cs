@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 using SimpleJSON;
 
@@ -25,6 +24,15 @@ namespace DMXlab
             if (!lightShafts) lightShafts = go.AddComponent<LightShafts>();
             lightShafts.m_CurrentCamera = Camera.main;
             lightShafts.m_DepthThreshold = 4;
+
+            Selection.activeGameObject = go;
+        }
+
+        [MenuItem("GameObject/DMXlab/Smoke", false, 10)]
+        static void CreateSmoke()
+        {
+            GameObject go = new GameObject("Smoke");
+            go.AddComponent<Smoke>();
 
             Selection.activeGameObject = go;
         }
