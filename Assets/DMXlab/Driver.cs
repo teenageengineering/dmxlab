@@ -99,8 +99,21 @@ namespace DMXlab
 
         void Send()
         {
-            if (serialPort != null && serialPort.IsOpen)
-                serialPort.Write(TxBuffer, 0, TX_BUFFER_LENGTH);
+            if (serialPort == null || !serialPort.IsOpen)
+                return;
+            
+            serialPort.Write(TxBuffer, 0, TX_BUFFER_LENGTH);
+        }
+
+        void Reset()
+        {
+            if (serialPort == null || !serialPort.IsOpen)
+                return;
+
+            for (int i = 0; i < N_DMX_CHANNELS; i++)
+                TxBuffer[DMX_PRO_DATA_INDEX_OFFSET + i] = 0;
+
+            Send();
         }
 
         #region MonoBehaviour
@@ -117,6 +130,11 @@ namespace DMXlab
             TxBuffer[517] = DMX_PRO_END_MSG;
         }
 
+        void OnDisable()
+        {
+            Reset();
+        }
+
         void Update()
         {
             if (serialPortName != _prevSerialPortName)
@@ -127,10 +145,7 @@ namespace DMXlab
 
         void OnApplicationQuit()
         {
-            for (int i = 0; i < N_DMX_CHANNELS; i++) 
-                TxBuffer[DMX_PRO_DATA_INDEX_OFFSET + i] = 0;
-
-            Send();
+            Reset();
 
             if (serialPort != null)
                 CloseSerialPort();
