@@ -216,11 +216,11 @@ namespace DMXlab
                 {
                     Vector3 offset = new Vector3((pixelCount[0] - 1f) / 2 * pixelSize.x, (pixelCount[1] - 1f) / 2 * pixelSize.y, (pixelCount[2] - 1f) / 2 * pixelSize.z);
                     int i = 1;
-                    for (int z = 0; z < pixelCount[2]; z++)
+                    for (int z = pixelCount[2] - 1; z >= 0 ; z--)
                     {
-                        for (int y = 0; y < pixelCount[1]; y++)
+                        for (int y = pixelCount[1] - 1; y >= 0; y--)
                         {
-                            for (int x = 0; x < pixelCount[0]; x++)
+                            for (int x = pixelCount[0] - 1; x >= 0; x--)
                             {
                                 GameObject pixel = CreatePixel("Pixel " + i++, pixelSize);
 
