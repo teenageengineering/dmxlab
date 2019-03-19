@@ -16,6 +16,12 @@ namespace Klak.DMX
         int _channel;
 
         [SerializeField]
+        string _templateChannel;
+
+        [SerializeField]
+        string _pixelKey;
+
+        [SerializeField]
         bool _selectCapability;
 
         [SerializeField]

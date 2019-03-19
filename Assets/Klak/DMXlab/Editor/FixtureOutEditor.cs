@@ -12,6 +12,8 @@ namespace Klak.DMX
     {
         SerializedProperty _fixture;
         SerializedProperty _channel;
+        SerializedProperty _templateChannel;
+        SerializedProperty _pixelKey;
         SerializedProperty _selectCapability;
         SerializedProperty _capabilityName;
 
@@ -19,6 +21,8 @@ namespace Klak.DMX
         {
             _fixture = serializedObject.FindProperty("_fixture");
             _channel = serializedObject.FindProperty("_channel");
+            _templateChannel = serializedObject.FindProperty("_templateChannel");
+            _pixelKey = serializedObject.FindProperty("_pixelKey");
             _selectCapability = serializedObject.FindProperty("_selectCapability");
             _capabilityName = serializedObject.FindProperty("_capabilityName");
         }
@@ -30,6 +34,7 @@ namespace Klak.DMX
             EditorGUILayout.PropertyField(_fixture);
 
             Fixture fixture = _fixture.objectReferenceValue as Fixture;
+
             if (fixture != null && fixture.useLibrary)
             {
                 EditorGUILayout.PropertyField(_selectCapability);
@@ -59,28 +64,55 @@ namespace Klak.DMX
                 }
                 else
                 {
-                    JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(fixture.libraryPath);
-                    if (fixtureDef == null)
-                        return;
-
-                    JSONArray modes = fixtureDef["modes"] as JSONArray;
-                    JSONArray modeChannels = modes[fixture.modeIndex]["channels"] as JSONArray;
-
-                    List<string> channelNames = new List<string>();
-                    List<int> channelIndexes = new List<int>();
-
-                    for (int i = 0; i < modeChannels.Count; i++)
+                    if (fixture.isMatrix)
                     {
-                        string channelName = modeChannels[i];
-                        if (channelName == null) continue;
+                        List<string> templateChannelNames = new List<string>();
+                        List<string> pixelKeys = new List<string>();
 
-                        channelNames.Add(channelName.Replace("/", "-"));
-                        channelIndexes.Add(i);
+                        for (int i = 0; i < fixture.numChannels; i++)
+                        {
+                            string channelKey = fixture.GetChannelKey(i);
+                            string channelPixelKey = fixture.GetChannelPixelKey(i);
+                            if (string.IsNullOrEmpty(channelPixelKey))
+                                continue;
+
+                            if (!pixelKeys.Contains(channelPixelKey))
+                                pixelKeys.Add(channelPixelKey);
+
+                            if (!templateChannelNames.Contains(channelKey))
+                                templateChannelNames.Add(channelKey);
+                        }
+
+                        int pixelIndex = Mathf.Max(System.Array.IndexOf(pixelKeys.ToArray(), _pixelKey.stringValue), 0);
+                        pixelIndex = EditorGUILayout.Popup("Pixel Key", pixelIndex, pixelKeys.ToArray());
+                        _pixelKey.stringValue = pixelKeys[pixelIndex];
+
+                        int templateChannelIndex = Mathf.Max(System.Array.IndexOf(templateChannelNames.ToArray(), _templateChannel.stringValue), 0);
+                        templateChannelIndex = EditorGUILayout.Popup("Pixel Channel", templateChannelIndex, templateChannelNames.ToArray());
+                        _templateChannel.stringValue = templateChannelNames[templateChannelIndex];
+
+                        _channel.intValue = fixture.GetChannelIndex(_templateChannel.stringValue, _pixelKey.stringValue);
                     }
+                    else
+                    {
+                        List<string> channelNames = new List<string>();
+                        List<int> channelIndexes = new List<int>();
 
-                    int selectorIndex = Mathf.Max(System.Array.IndexOf(channelIndexes.ToArray(), _channel.intValue), 0);
-                    selectorIndex = EditorGUILayout.Popup("Channel", selectorIndex, channelNames.ToArray());
-                    _channel.intValue = channelIndexes[selectorIndex];
+                        for (int i = 0; i < fixture.numChannels; i++)
+                        {
+                            string channelKey = fixture.GetChannelKey(i);
+                            JSONObject channel = fixture.GetChannelDef(channelKey);
+                            if (channel == null)
+                                continue;
+
+                            channelNames.Add(channelKey.Replace("/", "-"));
+                            channelIndexes.Add(i);
+                        }
+
+                        int selectorIndex = Mathf.Max(System.Array.IndexOf(channelIndexes.ToArray(), _channel.intValue), 0);
+                        selectorIndex = EditorGUILayout.Popup("Channel", selectorIndex, channelNames.ToArray());
+                        _channel.intValue = channelIndexes[selectorIndex];
+                    }
                 }
             }
             else

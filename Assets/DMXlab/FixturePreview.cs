@@ -107,6 +107,38 @@ namespace DMXlab
             return "";
         }
 
+        public int GetChannelIndex(string channelKey, string channelPixelKey)
+        {
+            JSONArray modeChannels = fixtureDef["modes"][modeIndex]["channels"] as JSONArray;
+
+            int n = 0;
+            foreach (JSONNode channelRef in modeChannels)
+            {
+                if (channelRef is JSONObject)
+                {
+                    foreach (JSONString pixelKey in channelRef["repeatFor"] as JSONArray)
+                    {
+                        foreach (JSONString templateChannelName in channelRef["templateChannels"] as JSONArray)
+                        {
+                            if (templateChannelName == channelKey && pixelKey == channelPixelKey)
+                                return n;
+
+                            ++n;
+                        }
+                    }
+                }
+                else 
+                {
+                    if (channelRef == channelKey)
+                        return n;
+
+                    ++n;
+                }
+            }
+
+            return -1;
+        }
+
         #endregion
 
         public JSONObject GetChannelDef(string channelKey, string channelPixelKey = "")
@@ -151,6 +183,8 @@ namespace DMXlab
         public List<string> pixelKeys;
         public Dictionary<string, List<string>> pixelGroups;
 
+        public bool isMatrix;
+
         #region Internal
 
         float _pan;
@@ -173,7 +207,6 @@ namespace DMXlab
 
         [SerializeField] float _beamAngle;
         [SerializeField] bool _isLaser;
-        [SerializeField] bool _isMatrix;
 
         GameObject CreatePixel(string name, Vector3 size)
         {
@@ -241,7 +274,7 @@ namespace DMXlab
 
             // pixels
 
-            _isMatrix = false;
+            isMatrix = false;
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
                 Transform child = transform.GetChild(i);
@@ -254,8 +287,6 @@ namespace DMXlab
             pixelKeys = new List<string>();
             if (fixtureDef["matrix"] != null)
             {
-                _isMatrix = true;
-
                 JSONArray pixelKeysZ = fixtureDef["matrix"]["pixelKeys"] as JSONArray;
 
                 if (pixelKeysZ != null)
@@ -333,14 +364,22 @@ namespace DMXlab
             for (int i = 0; i < numChannels; i++)
             {
                 string channelKey = GetChannelKey(i);
-                JSONObject channel = GetChannelDef(channelKey);
+                string channelPixelKey = GetChannelPixelKey(i);
+                if (!string.IsNullOrEmpty(channelPixelKey))
+                    isMatrix = true;
+
+                JSONObject channel = GetChannelDef(channelKey, channelPixelKey);
                 if (channel == null)
                     continue;
 
                 JSONObject capability = channel["capability"] as JSONObject;
                 if (capability != null)
                 {
-                    capabilityNames.Add(capability["type"]);
+                    string capabilityName = capability["type"];
+                    if (capability["type"] == "ColorIntensity")
+                        capabilityName += " " + capability["color"];
+
+                    capabilityNames.Add(capabilityName);
                     capabilityChannels.Add(i);
                 }
             }
@@ -637,7 +676,7 @@ namespace DMXlab
             }
             else
             {
-                if (_isMatrix)
+                if (isMatrix)
                 {
                     Color color = Color.black;
                     MeshRenderer[] pixels = GetComponentsInChildren<MeshRenderer>();
