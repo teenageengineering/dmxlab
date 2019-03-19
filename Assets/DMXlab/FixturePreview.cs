@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
-using UnityEngine;
 using SimpleJSON;
+using UnityEngine;
 
 namespace DMXlab
 {
@@ -53,6 +53,70 @@ namespace DMXlab
             }
         }
 
+        public JSONObject fixtureDef {
+            get {
+                JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(libraryPath);
+                if (fixtureDef == null)
+                    return null;
+
+                return fixtureDef;
+            }
+        }
+
+        #region needs optimize
+
+        public string GetChannelKey(int channelIndex)
+        {
+            JSONArray modeChannels = fixtureDef["modes"][modeIndex]["channels"] as JSONArray;
+
+            int n = 0;
+            foreach (JSONNode channelRef in modeChannels)
+            {
+                if (channelRef is JSONObject)
+                {
+                    foreach (JSONString pixelKey in channelRef["repeatFor"] as JSONArray)
+                        foreach (JSONString templateChannelName in channelRef["templateChannels"] as JSONArray)
+                            if (n++ == channelIndex)
+                                return templateChannelName;
+                }
+                else if (n++ == channelIndex)
+                    return channelRef;
+            }
+
+            return "";
+        }
+
+        public string GetChannelPixelKey(int channelIndex)
+        {
+            JSONArray modeChannels = fixtureDef["modes"][modeIndex]["channels"] as JSONArray;
+
+            int n = 0;
+            foreach (JSONNode channelRef in modeChannels)
+            {
+                if (channelRef is JSONObject)
+                {
+                    foreach (JSONString pixelKey in channelRef["repeatFor"] as JSONArray)
+                        foreach (JSONString templateChannelName in channelRef["templateChannels"] as JSONArray)
+                            if (n++ == channelIndex)
+                                return pixelKey;
+                }
+                else
+                    ++n;
+            }
+
+            return "";
+        }
+
+        #endregion
+
+        public JSONObject GetChannelDef(string channelKey, string channelPixelKey = "")
+        {
+            if (!string.IsNullOrEmpty(channelPixelKey))
+                return fixtureDef["templateChannels"][channelKey] as JSONObject;
+
+            return fixtureDef["availableChannels"][channelKey] as JSONObject;
+        }
+
         public List<string> capabilityNames;
         public List<int> capabilityChannels;
 
@@ -84,24 +148,8 @@ namespace DMXlab
             return null;
         }
 
-        public JSONObject GetChannelDef(int channelIndex)
-        {
-            JSONObject fixtureDef = FixtureLibrary.Instance.GetFixtureDef(libraryPath);
-            if (fixtureDef == null)
-                return null;
-
-            string channelName = fixtureDef["modes"][modeIndex]["channels"][channelIndex];
-            if (channelName != null)
-            {
-                JSONObject channel = fixtureDef["availableChannels"][channelName] as JSONObject;
-                if (channel != null)
-                    channel["name"] = channelName;
-
-                return channel;
-            }
-
-            return null;
-        }
+        public List<string> pixelKeys;
+        public Dictionary<string, List<string>> pixelGroups;
 
         #region Internal
 
@@ -144,7 +192,7 @@ namespace DMXlab
             filter.mesh = mesh;
 
             MeshRenderer renderer = go.AddComponent<MeshRenderer>();
-            renderer.material = new Material(Shader.Find("Unlit/Color"));
+            renderer.sharedMaterial = new Material(Shader.Find("Unlit/Color"));
 
             return go;
         }
@@ -203,32 +251,79 @@ namespace DMXlab
                     DestroyImmediate(child.gameObject);
             }
 
+            pixelKeys = new List<string>();
             if (fixtureDef["matrix"] != null)
             {
                 _isMatrix = true;
 
-                JSONArray pixelCount = fixtureDef["matrix"]["pixelCount"] as JSONArray;
+                JSONArray pixelKeysZ = fixtureDef["matrix"]["pixelKeys"] as JSONArray;
 
-                LightShafts lightShafts = GetComponent<LightShafts>();
-                lightShafts.m_Size = new Vector3(pixelCount[0] * pixelSize.x, pixelCount[1] * pixelSize.y, pixelCount[2] * pixelSize.z);
-
-                if (pixelCount != null)
+                if (pixelKeysZ != null)
                 {
-                    Vector3 offset = new Vector3((pixelCount[0] - 1f) / 2 * pixelSize.x, (pixelCount[1] - 1f) / 2 * pixelSize.y, (pixelCount[2] - 1f) / 2 * pixelSize.z);
-                    int i = 1;
-                    for (int z = pixelCount[2] - 1; z >= 0 ; z--)
+                    for (int z = 0; z < pixelKeysZ.Count; z++)
                     {
-                        for (int y = pixelCount[1] - 1; y >= 0; y--)
+                        JSONArray pixelKeysY = pixelKeysZ[z] as JSONArray;
+
+                        for (int y = 0; y < pixelKeysY.Count; y++)
                         {
-                            for (int x = pixelCount[0] - 1; x >= 0; x--)
+                            JSONArray pixelKeysX = pixelKeysY[y] as JSONArray;
+
+                            for (int x = 0; x < pixelKeysX.Count; x++)
                             {
-                                GameObject pixel = CreatePixel("Pixel " + i++, pixelSize);
+                                JSONString pixelKey = pixelKeysX[x] as JSONString;
+
+                                pixelKeys.Add(pixelKey);
+                                GameObject pixel = CreatePixel(pixelKey, pixelSize);
 
                                 // TODO: pixel spacing
-                                pixel.transform.localPosition = new Vector3(x * pixelSize.x, y * pixelSize.y, z * pixelSize.z) - offset;
+                                pixel.transform.localPosition = new Vector3(((pixelKeysX.Count - 1) / 2f - x) * pixelSize.x, ((pixelKeysY.Count - 1) / 2f - y) * pixelSize.y, ((pixelKeysZ.Count - 1) / 2f - z) * pixelSize.z);
                                 pixel.transform.SetParent(transform, false);
                             }
                         }
+                    }
+                }
+                else
+                {
+                    JSONArray pixelCount = fixtureDef["matrix"]["pixelCount"] as JSONArray;
+
+                    for (int z = 0; z < pixelCount[2]; z++)
+                    {
+                        for (int y = 0; y < pixelCount[1]; y++)
+                        {
+                            for (int x = 0; x < pixelCount[0]; x++)
+                            {
+                                string pixelKey = null;
+                                if (pixelCount[1] > 1)
+                                {
+                                    if (pixelCount[2] > 1)
+                                        pixelKey = string.Format("({0}, {1}, {2})", x + 1, y + 1, z + 1);
+                                    else
+                                        pixelKey = string.Format("({0}, {1})", x + 1, y + 1);
+                                }
+                                else
+                                    pixelKey = string.Format("{0}", x + 1);
+
+                                pixelKeys.Add(pixelKey);
+                                GameObject pixel = CreatePixel(pixelKey, pixelSize);
+
+                                // TODO: pixel spacing
+                                pixel.transform.localPosition = new Vector3(((pixelCount[0] - 1) / 2f - x) * pixelSize.x, ((pixelCount[1] - 1) / 2f - y) * pixelSize.y, ((pixelCount[2] - 1) / 2f - z) * pixelSize.z);
+                                pixel.transform.SetParent(transform, false);
+                            }
+                        }
+                    }
+                }
+
+                pixelGroups = new Dictionary<string, List<string>>();
+                if (fixtureDef["matrix"]["pixelGroups"] != null)
+                {
+                    foreach (KeyValuePair<string, JSONNode> pixelGroup in fixtureDef["matrix"]["pixelGroups"] as JSONObject)
+                    {
+                        List<string> groupMembers = new List<string>();
+                        foreach (JSONString pixelKey in pixelGroup.Value as JSONArray)
+                            groupMembers.Add(pixelKey);
+
+                        pixelGroups[pixelGroup.Key] = groupMembers;
                     }
                 }
             }
@@ -237,7 +332,8 @@ namespace DMXlab
             capabilityChannels = new List<int>();
             for (int i = 0; i < numChannels; i++)
             {
-                JSONObject channel = GetChannelDef(i);
+                string channelKey = GetChannelKey(i);
+                JSONObject channel = GetChannelDef(channelKey);
                 if (channel == null)
                     continue;
 
@@ -257,7 +353,8 @@ namespace DMXlab
         {
             for (int i = 0; i < numChannels; i++)
             {
-                JSONObject channel = GetChannelDef(i);
+                string channelKey = GetChannelKey(i);
+                JSONObject channel = GetChannelDef(channelKey);
                 if (channel == null)
                     continue;
 
@@ -271,7 +368,9 @@ namespace DMXlab
             if (!useLibrary)
                 return;
 
-            JSONObject channel = GetChannelDef(channelIndex);
+            string channelKey = GetChannelKey(channelIndex);
+            string channelPixelKey = GetChannelPixelKey(channelIndex);
+            JSONObject channel = GetChannelDef(channelKey, channelPixelKey);
             if (channel == null)
                 return;
 
@@ -316,41 +415,34 @@ namespace DMXlab
             }
             else if (capabilityType == "ColorIntensity")
             {
+                string colorKey = capability["color"];
                 float intensity = FixtureLibrary.GetFloatProperty(capability, "brightness", FixtureLibrary.Entity.Brightness, _values[channelIndex]);
 
-                string color = capability["color"];
-
-                string pixelKey = FixtureLibrary.ParseTemplatePixelKey(channel["name"]);
-
-                if (!string.IsNullOrEmpty(pixelKey))
+                // TODO: generalize to all capabilities
+                if (!string.IsNullOrEmpty(channelPixelKey))
                 {
-                    Transform pixel = transform.Find("Pixel " + pixelKey);
+                    Transform pixel = transform.Find(channelPixelKey);
                     if (pixel == null)
-                        return;
+                    {
+                        foreach (JSONString p in fixtureDef["matrix"]["pixelGroups"][channelPixelKey] as JSONArray)
+                        {
+                            pixel = transform.Find(p);
+                            SetPixelColor(pixel, colorKey, intensity);
+                        }
+                    }
+                    else
+                        SetPixelColor(pixel, colorKey, intensity);
 
-                    MeshRenderer pixelRenderer = pixel.GetComponent<MeshRenderer>();
-                    Color pixelColor = pixelRenderer.sharedMaterial.color;
-
-                    if (color == "Red")
-                        pixelColor.r = intensity;
-                    else if (color == "Green")
-                        pixelColor.g = intensity;
-                    else if (color == "Blue")
-                        pixelColor.b = intensity;
-                    else if (color == "White")
-                        pixelColor.a = intensity;
-
-                    pixelRenderer.sharedMaterial.color = pixelColor;
                 }
                 else 
                 {
-                    if (color == "Red")
+                    if (colorKey == "Red")
                         _red = intensity;
-                    else if (color == "Green")
+                    else if (colorKey == "Green")
                         _green = intensity;
-                    else if (color == "Blue")
+                    else if (colorKey == "Blue")
                         _blue = intensity;
-                    else if (color == "White")
+                    else if (colorKey == "White")
                         _white = intensity;
                 }
 
@@ -395,7 +487,7 @@ namespace DMXlab
             }
             else if (capabilityType == "WheelSlot")
             {
-                string wheelName = channel["name"];
+                string wheelName = channelKey;
                 if (capability["wheel"] != null) wheelName = capability["wheel"];
 
                 Wheel wheel = GetWheel(wheelName);
@@ -409,7 +501,7 @@ namespace DMXlab
             }
             else if (capabilityType == "WheelRotation")
             {
-                string wheelName = channel["name"];
+                string wheelName = channelKey;
                 if (capability["wheel"] != null) wheelName = capability["wheel"];
 
                 Wheel wheel = GetWheel(wheelName);
@@ -418,8 +510,8 @@ namespace DMXlab
             }
             else if (capabilityType == "NoFunction")
             {
-                // fix for some bad ficture defs
-                if (channel["name"] == "Strobe")
+                // TODO this is a hack for some bad ficture defs
+                if (channelKey == "Strobe")
                     _shutterEffect = FixtureLibrary.ShutterEffect.Open;
 
                 UpdateShutter();
@@ -429,6 +521,23 @@ namespace DMXlab
         int Mod(int k, int m)
         {
             return ((k % m) + m) % m;
+        }
+
+        void SetPixelColor(Transform pixel, string colorKey, float intensity)
+        {
+            MeshRenderer pixelRenderer = pixel.GetComponent<MeshRenderer>();
+            Color pixelColor = pixelRenderer.sharedMaterial.color;
+
+            if (colorKey == "Red")
+                pixelColor.r = intensity;
+            else if (colorKey == "Green")
+                pixelColor.g = intensity;
+            else if (colorKey == "Blue")
+                pixelColor.b = intensity;
+            else if (colorKey == "White")
+                pixelColor.a = intensity;
+
+            pixelRenderer.sharedMaterial.color = pixelColor;
         }
 
         void UpdateTransform()
@@ -468,8 +577,8 @@ namespace DMXlab
 
         void UpdateIntensity()
         {
-            Light fixtureLight = GetComponent<Light>();
-            fixtureLight.intensity = _shutter ? 0 : _intensity;
+            //Light fixtureLight = GetComponent<Light>();
+            //fixtureLight.intensity = _shutter ? 0 : _intensity;
         }
 
         void UpdateSpotAngle()
@@ -534,7 +643,7 @@ namespace DMXlab
                     MeshRenderer[] pixels = GetComponentsInChildren<MeshRenderer>();
                     foreach (MeshRenderer pixel in pixels)
                     {
-                        color += pixel.material.color;
+                        color += pixel.sharedMaterial.color;
                     }
                     fixtureLight.color = color / pixels.Length;
                 }

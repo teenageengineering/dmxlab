@@ -384,9 +384,15 @@ namespace DMXlab
             return value;
         }
 
+        // FIXME
         public static string ParseTemplatePixelKey(string channelName)
         {
             return Regex.Match(channelName, @"\d+").Value;
+        }
+
+        public static string ExpandTemplateChannelName(string templateChannelName, string pixelKey)
+        {
+            return Regex.Replace(templateChannelName, @"\$pixelKey", pixelKey);
         }
 
         #endregion

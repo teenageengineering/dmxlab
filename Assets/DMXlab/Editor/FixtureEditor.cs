@@ -78,35 +78,78 @@ namespace DMXlab
                 fixture.modeIndex = Mathf.Min(EditorGUILayout.Popup("Mode", fixture.modeIndex, modeNames), modes.Count - 1);
 
                 JSONArray modeChannels = modes[fixture.modeIndex]["channels"] as JSONArray;
-                fixture.numChannels = Mathf.Min(modeChannels.Count, Fixture.kMaxNumChannels);
 
                 fixture.useChannelDefaults = EditorGUILayout.Toggle("Use Channel Defaults", fixture.useChannelDefaults);
 
                 // channel fields
 
-                for (int i = 0; i < fixture.numChannels; i++)
+                int n = 0;
+                foreach (JSONNode channelRef in modeChannels)
                 {
-                    JSONObject channel = fixture.GetChannelDef(i);
-                    if (channel == null) continue;
-
-                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-
-                    if (channel["capability"] != null)
+                    // matrix insert block
+                    if (channelRef is JSONObject)
                     {
-                        int value = fixture.GetChannelValue(i);
-                        value = EditorGUILayout.IntSlider(channel["name"], value, 0, 255);
-                        fixture.SetChannelValue(i, (byte)value);
-                    }
-                    else if (channel["capabilities"] != null)
-                    {
-                        // TODO: selector
-                        int value = fixture.GetChannelValue(i);
-                        value = EditorGUILayout.IntSlider(channel["name"], value, 0, 255);
-                        fixture.SetChannelValue(i, (byte)value);
-                    }
+                        foreach (JSONString pixelKey in channelRef["repeatFor"] as JSONArray)
+                        {
+                            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-                    EditorGUILayout.EndVertical();
+                            foreach (JSONString templateChannelName in channelRef["templateChannels"] as JSONArray)
+                            {
+                                string channelName = FixtureLibrary.ExpandTemplateChannelName(templateChannelName, pixelKey);
+                                JSONObject templateChannel = fixture.GetChannelDef(templateChannelName, pixelKey);
+
+                                // TODO: duplicated code
+                                if (templateChannel["capability"] != null)
+                                {
+                                    int value = fixture.GetChannelValue(n);
+                                    value = EditorGUILayout.IntSlider(channelName, value, 0, 255);
+                                    fixture.SetChannelValue(n, (byte)value);
+                                }
+                                else if (templateChannel["capabilities"] != null)
+                                {
+                                    // TODO: selector
+                                    int value = fixture.GetChannelValue(n);
+                                    value = EditorGUILayout.IntSlider(channelName, value, 0, 255);
+                                    fixture.SetChannelValue(n, (byte)value);
+                                }
+
+                                ++n;
+                            }
+
+                            EditorGUILayout.EndVertical();
+                        }
+                    }
+                    else if (false)
+                    {
+                        // TODO: explicit pixel keys / groups 
+                    }
+                    else
+                    {
+                        JSONObject channel = fixture.GetChannelDef(channelRef);
+
+                        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+                        if (channel["capability"] != null)
+                        {
+                            int value = fixture.GetChannelValue(n);
+                            value = EditorGUILayout.IntSlider(channelRef, value, 0, 255);
+                            fixture.SetChannelValue(n, (byte)value);
+                        }
+                        else if (channel["capabilities"] != null)
+                        {
+                            // TODO: selector
+                            int value = fixture.GetChannelValue(n);
+                            value = EditorGUILayout.IntSlider(channelRef, value, 0, 255);
+                            fixture.SetChannelValue(n, (byte)value);
+                        }
+
+                        ++n;
+
+                        EditorGUILayout.EndVertical();
+                    }
                 }
+
+                fixture.numChannels = Mathf.Min(n, Fixture.kMaxNumChannels);
             }
             else
             {
