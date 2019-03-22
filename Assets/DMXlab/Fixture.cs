@@ -19,9 +19,6 @@ namespace DMXlab
             if (channelIndex < 0 || channelIndex >= kMaxNumChannels) 
                 return;
 
-            if (value == _values[channelIndex])
-                return;
-
             _values[channelIndex] = value;
 
             UpdateChannel(channelIndex);

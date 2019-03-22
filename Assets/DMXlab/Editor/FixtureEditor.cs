@@ -77,79 +77,22 @@ namespace DMXlab
                 for (int i = 0; i < modes.Count; i++) modeNames[i] = modes[i]["name"];
                 fixture.modeIndex = Mathf.Min(EditorGUILayout.Popup("Mode", fixture.modeIndex, modeNames), modes.Count - 1);
 
-                JSONArray modeChannels = modes[fixture.modeIndex]["channels"] as JSONArray;
-
                 fixture.useChannelDefaults = EditorGUILayout.Toggle("Use Channel Defaults", fixture.useChannelDefaults);
 
                 // channel fields
 
-                int n = 0;
-                foreach (JSONNode channelRef in modeChannels)
+                for (int i = 0; i < fixture.channelNames.Count; i++)
                 {
-                    // matrix insert block
-                    if (channelRef is JSONObject)
-                    {
-                        foreach (JSONString pixelKey in channelRef["repeatFor"] as JSONArray)
-                        {
-                            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                    string channelName = fixture.channelNames[i];
 
-                            foreach (JSONString templateChannelName in channelRef["templateChannels"] as JSONArray)
-                            {
-                                string channelName = FixtureLibrary.ExpandTemplateChannelName(templateChannelName, pixelKey);
-                                JSONObject templateChannel = fixture.GetChannelDef(templateChannelName, pixelKey);
+                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-                                // TODO: duplicated code
-                                if (templateChannel["capability"] != null)
-                                {
-                                    int value = fixture.GetChannelValue(n);
-                                    value = EditorGUILayout.IntSlider(channelName, value, 0, 255);
-                                    fixture.SetChannelValue(n, (byte)value);
-                                }
-                                else if (templateChannel["capabilities"] != null)
-                                {
-                                    // TODO: selector
-                                    int value = fixture.GetChannelValue(n);
-                                    value = EditorGUILayout.IntSlider(channelName, value, 0, 255);
-                                    fixture.SetChannelValue(n, (byte)value);
-                                }
+                    int value = fixture.GetChannelValue(i);
+                    value = EditorGUILayout.IntSlider(channelName, value, 0, 255);
+                    fixture.SetChannelValue(i, (byte)value);
 
-                                ++n;
-                            }
-
-                            EditorGUILayout.EndVertical();
-                        }
-                    }
-                    else if (false)
-                    {
-                        // TODO: explicit pixel keys / groups 
-                    }
-                    else
-                    {
-                        JSONObject channel = fixture.GetChannelDef(channelRef);
-
-                        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-
-                        if (channel["capability"] != null)
-                        {
-                            int value = fixture.GetChannelValue(n);
-                            value = EditorGUILayout.IntSlider(channelRef, value, 0, 255);
-                            fixture.SetChannelValue(n, (byte)value);
-                        }
-                        else if (channel["capabilities"] != null)
-                        {
-                            // TODO: selector
-                            int value = fixture.GetChannelValue(n);
-                            value = EditorGUILayout.IntSlider(channelRef, value, 0, 255);
-                            fixture.SetChannelValue(n, (byte)value);
-                        }
-
-                        ++n;
-
-                        EditorGUILayout.EndVertical();
-                    }
+                    EditorGUILayout.EndVertical();
                 }
-
-                fixture.numChannels = Mathf.Min(n, Fixture.kMaxNumChannels);
             }
             else
             {

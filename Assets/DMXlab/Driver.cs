@@ -25,14 +25,14 @@ namespace DMXlab
 
         const int TX_BUFFER_LENGTH = DMX_PRO_MESSAGE_OVERHEAD + N_DMX_CHANNELS;
 
-        #region Public
+        #region Editor
 
         public string serialPortName;
 
         #endregion
 
         static SerialPort serialPort;
-        byte[] TxBuffer = new byte[DMX_PRO_MESSAGE_OVERHEAD + N_DMX_CHANNELS];
+        byte[] TxBuffer = new byte[TX_BUFFER_LENGTH];
 
         public byte GetValue(int adress) 
         {
@@ -69,8 +69,7 @@ namespace DMXlab
         string _prevSerialPortName;
         void OpenSerialPort()
         {
-            if (serialPort != null)
-                CloseSerialPort();
+            CloseSerialPort();
 
             if (!string.IsNullOrEmpty(serialPortName))
             {
@@ -93,6 +92,9 @@ namespace DMXlab
 
         void CloseSerialPort()
         {
+            if (serialPort == null || !serialPort.IsOpen)
+                return;
+
             serialPort.Close();
             serialPort.Dispose();
         }
@@ -147,8 +149,7 @@ namespace DMXlab
         {
             Reset();
 
-            if (serialPort != null)
-                CloseSerialPort();
+            CloseSerialPort();
         }
 
         #endregion

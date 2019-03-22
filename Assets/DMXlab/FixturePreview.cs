@@ -63,84 +63,6 @@ namespace DMXlab
             }
         }
 
-        #region needs optimize
-
-        public string GetChannelKey(int channelIndex)
-        {
-            JSONArray modeChannels = fixtureDef["modes"][modeIndex]["channels"] as JSONArray;
-
-            int n = 0;
-            foreach (JSONNode channelRef in modeChannels)
-            {
-                if (channelRef is JSONObject)
-                {
-                    foreach (JSONString pixelKey in channelRef["repeatFor"] as JSONArray)
-                        foreach (JSONString templateChannelName in channelRef["templateChannels"] as JSONArray)
-                            if (n++ == channelIndex)
-                                return templateChannelName;
-                }
-                else if (n++ == channelIndex)
-                    return channelRef;
-            }
-
-            return "";
-        }
-
-        public string GetChannelPixelKey(int channelIndex)
-        {
-            JSONArray modeChannels = fixtureDef["modes"][modeIndex]["channels"] as JSONArray;
-
-            int n = 0;
-            foreach (JSONNode channelRef in modeChannels)
-            {
-                if (channelRef is JSONObject)
-                {
-                    foreach (JSONString pixelKey in channelRef["repeatFor"] as JSONArray)
-                        foreach (JSONString templateChannelName in channelRef["templateChannels"] as JSONArray)
-                            if (n++ == channelIndex)
-                                return pixelKey;
-                }
-                else
-                    ++n;
-            }
-
-            return "";
-        }
-
-        public int GetChannelIndex(string channelKey, string channelPixelKey)
-        {
-            JSONArray modeChannels = fixtureDef["modes"][modeIndex]["channels"] as JSONArray;
-
-            int n = 0;
-            foreach (JSONNode channelRef in modeChannels)
-            {
-                if (channelRef is JSONObject)
-                {
-                    foreach (JSONString pixelKey in channelRef["repeatFor"] as JSONArray)
-                    {
-                        foreach (JSONString templateChannelName in channelRef["templateChannels"] as JSONArray)
-                        {
-                            if (templateChannelName == channelKey && pixelKey == channelPixelKey)
-                                return n;
-
-                            ++n;
-                        }
-                    }
-                }
-                else 
-                {
-                    if (channelRef == channelKey)
-                        return n;
-
-                    ++n;
-                }
-            }
-
-            return -1;
-        }
-
-        #endregion
-
         public JSONObject GetChannelDef(string channelKey, string channelPixelKey = "")
         {
             if (!string.IsNullOrEmpty(channelPixelKey))
@@ -180,6 +102,8 @@ namespace DMXlab
             return null;
         }
 
+        public List<string> channelNames;
+        public List<string> templateChannelNames;
         public List<string> pixelKeys;
         public Dictionary<string, List<string>> pixelGroups;
 
@@ -284,7 +208,6 @@ namespace DMXlab
                     DestroyImmediate(child.gameObject);
             }
 
-            pixelKeys = new List<string>();
             if (fixtureDef["matrix"] != null)
             {
                 JSONArray pixelKeysZ = fixtureDef["matrix"]["pixelKeys"] as JSONArray;
@@ -302,8 +225,9 @@ namespace DMXlab
                             for (int x = 0; x < pixelKeysX.Count; x++)
                             {
                                 JSONString pixelKey = pixelKeysX[x] as JSONString;
+                                if (string.IsNullOrEmpty(pixelKey))
+                                    continue;
 
-                                pixelKeys.Add(pixelKey);
                                 GameObject pixel = CreatePixel(pixelKey, pixelSize);
 
                                 // TODO: pixel spacing
@@ -334,7 +258,6 @@ namespace DMXlab
                                 else
                                     pixelKey = string.Format("{0}", x + 1);
 
-                                pixelKeys.Add(pixelKey);
                                 GameObject pixel = CreatePixel(pixelKey, pixelSize);
 
                                 // TODO: pixel spacing
@@ -359,12 +282,37 @@ namespace DMXlab
                 }
             }
 
+            channelNames = new List<string>();
+            templateChannelNames = new List<string>();
+            pixelKeys = new List<string>();
+            foreach (JSONNode channelRef in fixtureDef["modes"][modeIndex]["channels"] as JSONArray)
+            {
+                // matrix insert block
+                if (channelRef is JSONObject)
+                {
+                    // TODO: more repeatFor modes
+                    foreach (JSONString pixelKey in channelRef["repeatFor"] as JSONArray)
+                    {
+                        pixelKeys.Add(pixelKey);
+                        foreach (JSONString templateChannelName in channelRef["templateChannels"] as JSONArray)
+                        {
+                            templateChannelNames.Add(templateChannelName);
+                            channelNames.Add(FixtureLibrary.ExpandTemplateChannelName(templateChannelName, pixelKey));
+                        }
+                    }
+                }
+                else
+                    channelNames.Add(channelRef);
+            }
+
+            numChannels = channelNames.Count;
+
             capabilityNames = new List<string>();
             capabilityChannels = new List<int>();
             for (int i = 0; i < numChannels; i++)
             {
-                string channelKey = GetChannelKey(i);
-                string channelPixelKey = GetChannelPixelKey(i);
+                string channelKey = FixtureLibrary.ParseTemplateChannelKey(channelNames[i]);
+                string channelPixelKey = FixtureLibrary.ParseTemplatePixelKey(channelNames[i]);
                 if (!string.IsNullOrEmpty(channelPixelKey))
                     isMatrix = true;
 
@@ -392,7 +340,8 @@ namespace DMXlab
         {
             for (int i = 0; i < numChannels; i++)
             {
-                string channelKey = GetChannelKey(i);
+                // TODO: template channel defaults
+                string channelKey = channelNames[i];
                 JSONObject channel = GetChannelDef(channelKey);
                 if (channel == null)
                     continue;
@@ -407,8 +356,8 @@ namespace DMXlab
             if (!useLibrary)
                 return;
 
-            string channelKey = GetChannelKey(channelIndex);
-            string channelPixelKey = GetChannelPixelKey(channelIndex);
+            string channelKey = FixtureLibrary.ParseTemplateChannelKey(channelNames[channelIndex]);
+            string channelPixelKey = FixtureLibrary.ParseTemplatePixelKey(channelNames[channelIndex]);
             JSONObject channel = GetChannelDef(channelKey, channelPixelKey);
             if (channel == null)
                 return;
@@ -457,7 +406,7 @@ namespace DMXlab
                 string colorKey = capability["color"];
                 float intensity = FixtureLibrary.GetFloatProperty(capability, "brightness", FixtureLibrary.Entity.Brightness, _values[channelIndex]);
 
-                // TODO: generalize to all capabilities
+                // TODO: not just for color channels
                 if (!string.IsNullOrEmpty(channelPixelKey))
                 {
                     Transform pixel = transform.Find(channelPixelKey);
