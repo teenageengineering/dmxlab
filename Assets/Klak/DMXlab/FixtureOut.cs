@@ -16,12 +16,6 @@ namespace Klak.DMX
         int _channel;
 
         [SerializeField]
-        string _templateChannel;
-
-        [SerializeField]
-        string _pixelKey;
-
-        [SerializeField]
         bool _selectCapability;
 
         [SerializeField]
@@ -34,10 +28,10 @@ namespace Klak.DMX
         [Inlet]
         public float channel {
             set {
-                if (!enabled || _selectCapability)
+                if (!enabled || _fixture == null)
                     return;
 
-                _channel = (int)Mathf.Clamp(value, 0, (float)_fixture.numChannels);
+                _channel = Mathf.Clamp((int)value, 0, _fixture.numChannels - 1);
             }
         }
 
@@ -47,8 +41,8 @@ namespace Klak.DMX
                 if (!enabled || _fixture == null)
                     return;
 
-                float normalizedValue = Mathf.Clamp(value, 0, 1);
-                _fixture.SetChannelValue(_channel, System.Convert.ToByte(normalizedValue * 255));
+                value = Mathf.Clamp(value, 0, 1);
+                _fixture.SetChannelValue(_channel, System.Convert.ToByte(value * 255));
             }
         }
 
@@ -58,8 +52,8 @@ namespace Klak.DMX
                 if (!enabled || _fixture == null)
                     return;
 
-                float rawValue = Mathf.Clamp(value, 0, 255);
-                _fixture.SetChannelValue(_channel, System.Convert.ToByte(rawValue));
+                value = Mathf.Clamp(value, 0, 255);
+                _fixture.SetChannelValue(_channel, System.Convert.ToByte(value));
             }
         }
 
