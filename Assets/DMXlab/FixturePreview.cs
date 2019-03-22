@@ -301,6 +301,8 @@ namespace DMXlab
                         }
                     }
                 }
+                else if (channelRef == null)
+                    channelNames.Add("");
                 else
                     channelNames.Add(channelRef);
             }
@@ -311,8 +313,9 @@ namespace DMXlab
             capabilityChannels = new List<int>();
             for (int i = 0; i < numChannels; i++)
             {
-                string channelKey = FixtureLibrary.ParseTemplateChannelKey(channelNames[i]);
-                string channelPixelKey = FixtureLibrary.ParseTemplatePixelKey(channelNames[i]);
+                string channelName = channelNames[i];
+                string channelKey = FixtureLibrary.ParseTemplateChannelKey(channelName);
+                string channelPixelKey = FixtureLibrary.ParseTemplatePixelKey(channelName);
                 if (!string.IsNullOrEmpty(channelPixelKey))
                     isMatrix = true;
 
@@ -341,8 +344,8 @@ namespace DMXlab
             for (int i = 0; i < numChannels; i++)
             {
                 // TODO: template channel defaults
-                string channelKey = channelNames[i];
-                JSONObject channel = GetChannelDef(channelKey);
+                string channelName = channelNames[i];
+                JSONObject channel = GetChannelDef(channelName);
                 if (channel == null)
                     continue;
 
@@ -356,8 +359,9 @@ namespace DMXlab
             if (!useLibrary)
                 return;
 
-            string channelKey = FixtureLibrary.ParseTemplateChannelKey(channelNames[channelIndex]);
-            string channelPixelKey = FixtureLibrary.ParseTemplatePixelKey(channelNames[channelIndex]);
+            string channelName = channelNames[channelIndex];
+            string channelKey = FixtureLibrary.ParseTemplateChannelKey(channelName);
+            string channelPixelKey = FixtureLibrary.ParseTemplatePixelKey(channelName);
             JSONObject channel = GetChannelDef(channelKey, channelPixelKey);
             if (channel == null)
                 return;

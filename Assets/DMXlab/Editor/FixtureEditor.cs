@@ -10,7 +10,7 @@ namespace DMXlab
         #region Menu
 
         [MenuItem("GameObject/DMXlab/Fixture", false, 10)]
-        static void CreateFixture()
+        static void CreateFixture(MenuCommand menuCommand)
         {
             GameObject go = new GameObject("Fixture");
             go.AddComponent<Fixture>();
@@ -25,15 +25,17 @@ namespace DMXlab
             lightShafts.m_CurrentCamera = Camera.main;
             lightShafts.m_DepthThreshold = 4;
 
+            GameObjectUtility.SetParentAndAlign(go, (GameObject)menuCommand.context);
             Selection.activeGameObject = go;
         }
 
         [MenuItem("GameObject/DMXlab/Smoke", false, 10)]
-        static void CreateSmoke()
+        static void CreateSmoke(MenuCommand menuCommand)
         {
             GameObject go = new GameObject("Smoke");
             go.AddComponent<Smoke>();
 
+            GameObjectUtility.SetParentAndAlign(go, (GameObject)menuCommand.context);
             Selection.activeGameObject = go;
         }
 
@@ -84,6 +86,8 @@ namespace DMXlab
                 for (int i = 0; i < fixture.channelNames.Count; i++)
                 {
                     string channelName = fixture.channelNames[i];
+                    if (string.IsNullOrEmpty(channelName))
+                        channelName = "Undefined";
 
                     EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
