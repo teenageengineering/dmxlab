@@ -15,11 +15,19 @@ namespace Klak.DMX
         [SerializeField]
         int _channel;
 
+        public enum Mode { Channel, Capability, Matrix }
+
         [SerializeField]
-        bool _selectCapability;
+        Mode _mode;
 
         [SerializeField]
         string _capabilityName;
+
+        [SerializeField]
+        int _pixelIndex;
+
+        [SerializeField]
+        int _pixelChannel;
 
         #endregion
 

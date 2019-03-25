@@ -12,15 +12,19 @@ namespace Klak.DMX
     {
         SerializedProperty _fixture;
         SerializedProperty _channel;
-        SerializedProperty _selectCapability;
+        SerializedProperty _mode;
         SerializedProperty _capabilityName;
+        SerializedProperty _pixelIndex;
+        SerializedProperty _pixelChannel;
 
         void OnEnable()
         {
             _fixture = serializedObject.FindProperty("_fixture");
             _channel = serializedObject.FindProperty("_channel");
-            _selectCapability = serializedObject.FindProperty("_selectCapability");
+            _mode = serializedObject.FindProperty("_mode");
             _capabilityName = serializedObject.FindProperty("_capabilityName");
+            _pixelIndex = serializedObject.FindProperty("_pixelIndex");
+            _pixelChannel = serializedObject.FindProperty("_pixelChannel");
         }
 
         public override void OnInspectorGUI()
@@ -35,9 +39,11 @@ namespace Klak.DMX
 
             if (fixture != null && fixture.useLibrary)
             {
-                EditorGUILayout.PropertyField(_selectCapability);
+                EditorGUILayout.PropertyField(_mode);
 
-                if (_selectCapability.boolValue)
+                EditorGUILayout.Space();
+
+                if (_mode.enumValueIndex == (int)FixtureOut.Mode.Capability)
                 {
                     List<string> capabilities = new List<string>(fixture.capabilityNames);
                     int numCapabilities = capabilities.Count;
@@ -59,6 +65,25 @@ namespace Klak.DMX
                         _capabilityName.stringValue = capabilities[capabilityIndex];
 
                     _channel.intValue = fixture.GetCapabilityChannelIndex(_capabilityName.stringValue);
+                }
+                else if (_mode.enumValueIndex == (int)FixtureOut.Mode.Matrix)
+                {
+                    List<string> capabilities = new List<string>(fixture.capabilityNames);
+                    if (fixture.isMatrix)
+                    {
+                        int pixelIndex = Mathf.Min(_pixelIndex.intValue, fixture.pixelKeys.Count - 1);
+                        pixelIndex = EditorGUILayout.Popup("Pixel Key", pixelIndex, fixture.pixelKeys.ToArray());
+                        _pixelIndex.intValue = pixelIndex;
+
+                        int templateChannelIndex = Mathf.Min(_pixelChannel.intValue, fixture.templateChannelNames.Count - 1);
+                        templateChannelIndex = EditorGUILayout.Popup("Pixel Channel", templateChannelIndex, fixture.templateChannelNames.ToArray());
+                        _pixelChannel.intValue = templateChannelIndex;
+
+                        string channelName = FixtureLibrary.ExpandTemplateChannelName(fixture.templateChannelNames[templateChannelIndex], fixture.pixelKeys[pixelIndex]);
+                        _channel.intValue = fixture.channelNames.IndexOf(channelName);
+                    }
+                    else
+                        EditorGUILayout.HelpBox("Fixture is not in matrix mode", MessageType.Error);
                 }
                 else
                 {
