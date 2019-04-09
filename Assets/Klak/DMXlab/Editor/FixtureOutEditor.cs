@@ -68,7 +68,6 @@ namespace Klak.DMX
                 }
                 else if (_mode.enumValueIndex == (int)FixtureOut.Mode.Matrix)
                 {
-                    List<string> capabilities = new List<string>(fixture.capabilityNames);
                     if (fixture.isMatrix)
                     {
                         int pixelIndex = Mathf.Min(_pixelIndex.intValue, fixture.pixelKeys.Count - 1);
