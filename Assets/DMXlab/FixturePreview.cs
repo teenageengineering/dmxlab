@@ -569,8 +569,13 @@ namespace DMXlab
 
         void UpdateIntensity()
         {
-            //Light fixtureLight = GetComponent<Light>();
-            //fixtureLight.intensity = _shutter ? 0 : _intensity;
+            Light fixtureLight = GetComponent<Light>();
+            if (isMatrix)
+            {
+                // TODO: per pixel intensity
+            }
+            else
+                fixtureLight.intensity = _shutter ? 0 : _intensity;
         }
 
         void UpdateSpotAngle()
@@ -635,6 +640,7 @@ namespace DMXlab
                     MeshRenderer[] pixels = GetComponentsInChildren<MeshRenderer>();
                     foreach (MeshRenderer pixel in pixels)
                     {
+                        // TODO: white channel
                         color += pixel.sharedMaterial.color;
                     }
                     fixtureLight.color = color / pixels.Length;
