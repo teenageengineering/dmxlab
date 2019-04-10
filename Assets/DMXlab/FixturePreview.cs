@@ -71,18 +71,6 @@ namespace DMXlab
             return fixtureDef["availableChannels"][channelKey] as JSONObject;
         }
 
-        public List<string> capabilityNames;
-        public List<int> capabilityChannels;
-
-        public int GetCapabilityChannelIndex(string capabilityName)
-        {
-            int index = capabilityNames.IndexOf(capabilityName);
-            if (index != -1)
-                return capabilityChannels[index];
-
-            return -1;
-        }
-
         [System.Serializable]
         public class Wheel
         {
@@ -90,22 +78,13 @@ namespace DMXlab
             public float speed;
         }
 
-        public List<string> wheelNames;
-        public List<Wheel> wheelData;
-
-        public Wheel GetWheel(string wheelName)
-        {
-            int index = wheelNames.IndexOf(wheelName);
-            if (index != -1)
-                return wheelData[index];
-
-            return null;
-        }
-
         public List<string> channelNames;
         public List<string> templateChannelNames;
+        public Dictionary<string, int> capabilities;
+        public Dictionary<string, int> colorChannels;
         public List<string> pixelKeys;
         public Dictionary<string, List<string>> pixelGroups;
+        public Dictionary<string, Wheel> wheels;
 
         public bool isMatrix;
 
@@ -185,16 +164,10 @@ namespace DMXlab
 
             // wheels
 
-            wheelNames = new List<string>();
-            wheelData = new List<Wheel>();
+            wheels = new Dictionary<string, Wheel>();
             if (fixtureDef["wheels"] != null)
-            {
                 foreach (KeyValuePair<string, JSONNode> wheel in fixtureDef["wheels"] as JSONObject)
-                {
-                    wheelNames.Add(wheel.Key);
-                    wheelData.Add(new Wheel());
-                }
-            }
+                    wheels[wheel.Key] = new Wheel();
 
             // pixels
 
@@ -309,8 +282,8 @@ namespace DMXlab
 
             numChannels = channelNames.Count;
 
-            capabilityNames = new List<string>();
-            capabilityChannels = new List<int>();
+            capabilities = new Dictionary<string, int>();
+            colorChannels = new Dictionary<string, int>();
             for (int i = 0; i < numChannels; i++)
             {
                 string channelName = channelNames[i];
@@ -328,10 +301,13 @@ namespace DMXlab
                 {
                     string capabilityName = capability["type"];
                     if (capability["type"] == "ColorIntensity")
-                        capabilityName += " " + capability["color"];
+                    {
+                        string color = capability["color"];
+                        capabilityName += " " + color;
+                        colorChannels[color] = i;
+                    }
 
-                    capabilityNames.Add(capabilityName);
-                    capabilityChannels.Add(i);
+                    capabilities[capabilityName] = i;
                 }
             }
 
@@ -482,7 +458,7 @@ namespace DMXlab
                 string wheelName = channelKey;
                 if (capability["wheel"] != null) wheelName = capability["wheel"];
 
-                Wheel wheel = GetWheel(wheelName);
+                Wheel wheel = wheels[wheelName];
                 if (wheel != null)
                 {
                     wheel.slot = FixtureLibrary.GetFloatProperty(capability, "slotNumber", FixtureLibrary.Entity.SlotNumber, _values[channelIndex]);
@@ -496,7 +472,7 @@ namespace DMXlab
                 string wheelName = channelKey;
                 if (capability["wheel"] != null) wheelName = capability["wheel"];
 
-                Wheel wheel = GetWheel(wheelName);
+                Wheel wheel = wheels[wheelName];
                 if (wheel != null)
                     wheel.speed = FixtureLibrary.GetFloatProperty(capability, "speed", FixtureLibrary.Entity.Speed, _values[channelIndex]);
             }
@@ -592,10 +568,10 @@ namespace DMXlab
 
             Light fixtureLight = GetComponent<Light>();
 
-            for (int i = 0; i < wheelNames.Count; i++)
+            foreach (KeyValuePair<string, Wheel> wheelEntry in wheels)
             {
-                string wheelName = wheelNames[i];
-                Wheel wheel = wheelData[i];
+                string wheelName = wheelEntry.Key;
+                Wheel wheel = wheelEntry.Value;
 
                 JSONArray slots = fixtureDef["wheels"][wheelName]["slots"] as JSONArray;
                 int numSlots = slots.Count;
