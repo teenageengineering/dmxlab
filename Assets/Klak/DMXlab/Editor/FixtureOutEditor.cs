@@ -45,7 +45,7 @@ namespace Klak.DMX
 
                 if (_mode.enumValueIndex == (int)FixtureOut.Mode.Capability)
                 {
-                    List<string> capabilities = new List<string>(fixture.capabilities.Keys);
+                    List<string> capabilities = new List<string>(fixture.capabilityNames);
                     int numCapabilities = capabilities.Count;
 
                     int capabilityIndex = 0;
@@ -64,7 +64,7 @@ namespace Klak.DMX
                     if (capabilityIndex < numCapabilities)
                         _capabilityName.stringValue = capabilities[capabilityIndex];
 
-                    _channel.intValue = fixture.capabilities[_capabilityName.stringValue];
+                    _channel.intValue = fixture.GetCapabilityChannelIndex(_capabilityName.stringValue);
                 }
                 else if (_mode.enumValueIndex == (int)FixtureOut.Mode.Matrix)
                 {
@@ -86,6 +86,7 @@ namespace Klak.DMX
                 }
                 else
                 {
+
                     int channelIndex = Mathf.Min(_channel.intValue, fixture.numChannels - 1);
                     channelIndex = EditorGUILayout.Popup("Channel", channelIndex, fixture.channelNames.ToArray());
                     _channel.intValue = channelIndex;
